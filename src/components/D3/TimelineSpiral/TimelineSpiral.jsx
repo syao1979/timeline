@@ -43,6 +43,8 @@ const TimelineSpiral = ({
   const [spiralLoop, setSpiralLoops] = useState(SPIRAL_LOOP_ARRAY[1]);
   const [timeHeadArray, setTimeHeadArray] = useState({});
   const [timeHead, setTimeHead] = useState("");
+  const [timeButtArray, setTimeButtArray] = useState({});
+  const [timeButt, setTimeButt] = useState("");
   const [tailOnly, setTailOnly] = useState(false);
   const [showTimeMark, setShowTimeMark] = useState(false);
   const [showTimeUnitBar, setShowTimeUnitBar] = useState(false);
@@ -59,11 +61,12 @@ const TimelineSpiral = ({
   useEffect(() => {
     const ordered = [];
     const lookup = {};
-    timelineData.forEach((d) => {
+    timelineData.forEach((d, idx) => {
       ordered.push([d.start, d.name]);
-      lookup[d.name] = d.start;
+      lookup[d.name] = { start: d.start, index: idx };
     });
     setTimeHeadArray({ ordered, lookup });
+    setTimeButtArray({ ordered: ordered.slice(1), lookup });
   }, []);
 
   useEffect(() => {
@@ -218,6 +221,7 @@ const TimelineSpiral = ({
         )
       : { x: 0, y: -200 };
   };
+
   const buildData = () => {
     const spiralLen = plotConfig.spiralLen;
     const path = plotConfig.path;
@@ -235,6 +239,7 @@ const TimelineSpiral = ({
 
     const spiralBlocks = []; // the spiral block data
     const tailBlocks = [];
+
     for (let i = 0; i < timelineData.length; i++) {
       const d = timelineData[i];
       if (d.start >= yearWindow[0] && d.start <= yearWindow[1]) {
@@ -778,10 +783,11 @@ const TimelineSpiral = ({
             d.group_end_year !== undefined
               ? ` [${d.group_end_year - d.group_start_year}]`
               : ""
-          }` +
-          ` [x=${d.x.toFixed(1)}, y=${d.y.toFixed(1)}; g_start_y=${
-            d.group_start_year
-          }; g_end_year=${d.group_end_year}]`
+          }`
+        // +
+        // ` [x=${d.x.toFixed(1)}, y=${d.y.toFixed(1)}; g_start_y=${
+        //   d.group_start_year
+        // }; g_end_year=${d.group_end_year}]`
       );
     };
     const tooltip = d3
@@ -857,12 +863,35 @@ const TimelineSpiral = ({
 
   const handleTimeHeadChange = (e) => {
     const value = e.target.value;
-    const range = [timeHeadArray.lookup[value], yearWindow[1]];
+    const order = timeHeadArray.lookup[value];
+    if (order.index >= timeHeadArray.lookup[timeButt].index) return; // range zero or crossed
+
+    const range = [
+      order.start,
+      timeButt ? timeHeadArray.lookup[timeButt].start : yearWindow[1],
+    ];
     setTimeHead(value);
+
+    setTimeButtArray({
+      ordered: timeHeadArray.ordered.slice(order.index + 1),
+      lookup: timeHeadArray.lookup,
+    });
     setYearLimits(range);
     setYearWindow(range);
   };
 
+  const handleTimeButtChange = (e) => {
+    const value = e.target.value;
+    const order = timeHeadArray.lookup[value];
+    const range = [
+      timeHead ? timeHeadArray.lookup[timeHead].start : yearWindow[0],
+      order.start,
+    ];
+    setTimeButt(value);
+    setYearLimits(range);
+    setYearWindow(range);
+  };
+  // console.log(timeHead, timeButt, yearLimits, yearWindow, "[time head/butt]");
   const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
   return (
@@ -892,6 +921,21 @@ const TimelineSpiral = ({
             limits={yearLimits}
             value={yearWindow}
             handleChange={handleYearRangeChange}
+          />
+
+          <SelectCtl
+            label="From"
+            value={timeHead}
+            valueArray={timeHeadArray.ordered?.map((d) => d[1])}
+            handleChange={handleTimeHeadChange}
+            width={80}
+          />
+          <SelectCtl
+            label="To"
+            value={timeButt}
+            valueArray={timeButtArray.ordered?.map((d) => d[1])}
+            handleChange={handleTimeButtChange}
+            width={80}
           />
 
           <FormGroup style={{ marginLeft: 40 }}>
@@ -935,13 +979,6 @@ const TimelineSpiral = ({
             value={spiralLoop}
             valueArray={SPIRAL_LOOP_ARRAY}
             handleChange={handleSpiralLoopChange}
-          />
-          <SelectCtl
-            label="From"
-            value={timeHead}
-            valueArray={timeHeadArray.ordered?.map((d) => d[1])}
-            handleChange={handleTimeHeadChange}
-            width={80}
           />
         </div>
       ) : null}

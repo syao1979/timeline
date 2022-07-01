@@ -95,58 +95,58 @@ const Controller = () => {
           </MenuItem>
         ))
       : null;
-  //   return (
-  //     <div>
-  //       <Gantt />
-  //     </div>
-  //   );
 
-  return (
-    <>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <TextField
-          value={searchString}
-          label="Enter your search"
-          onChange={(e) => {
-            setSearchString(e.target.value);
-          }}
-          variant="outlined"
-          size="small"
-          style={{ margin: 4 }}
-        />
+  const mainControl = (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      <TextField
+        value={searchString}
+        label="Enter your search"
+        onChange={(e) => {
+          setSearchString(e.target.value);
+        }}
+        variant="outlined"
+        size="small"
+        style={{ margin: 4 }}
+      />
 
-        {secSelect ? (
-          <FormControl sx={{ m: 1, minWidth: 120 }}>
-            <Select
-              value={section}
-              onChange={handleSectionChange}
-              displayEmpty
-              inputProps={{ "aria-label": "Without label" }}
-              size="small"
-              style={{ marginLeft: 24 }}
-            >
-              {secSelect}
-            </Select>
-          </FormControl>
-        ) : null}
-
+      {secSelect ? (
         <FormControl sx={{ m: 1, minWidth: 120 }}>
           <Select
-            value={displayType}
-            onChange={handleGraphTypeChange}
+            value={section}
+            onChange={handleSectionChange}
             displayEmpty
             inputProps={{ "aria-label": "Without label" }}
             size="small"
             style={{ marginLeft: 24 }}
           >
-            {["Tree", "Gantt", "GoGantt", "Timeline"].map((sec) => (
-              <MenuItem key={sec} value={sec}>
-                {sec}
-              </MenuItem>
-            ))}
+            {secSelect}
           </Select>
         </FormControl>
-      </div>
+      ) : null}
+
+      <FormControl sx={{ m: 1, minWidth: 120 }}>
+        <Select
+          value={displayType}
+          onChange={handleGraphTypeChange}
+          displayEmpty
+          inputProps={{ "aria-label": "Without label" }}
+          size="small"
+          style={{ marginLeft: 24 }}
+        >
+          {["Tree", "Gantt", "GoGantt", "Timeline"].map((sec) => (
+            <MenuItem key={sec} value={sec}>
+              {sec}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </div>
+  );
+
+  const withControl = false;
+  return (
+    <>
+      {withControl && mainControl}
       {displayType === "Tree" ? (
         <OrgChart nodeDataArray={nodeDataArray} />
       ) : displayType === "Gantt" ? (
