@@ -1,0 +1,14 @@
+.TopContainer {
+  display: flex;
+  padding: 10;
+}
+
+.TreeColumn {
+  /* flex: 0 0 150px; */
+  /* overflow: auto; */
+}
+
+.ContentColumn {
+  flex-grow: 1;
+  border: solid 1px #f00;
+}

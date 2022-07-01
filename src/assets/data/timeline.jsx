@@ -1,0 +1,51 @@
+const timeline = [
+  //   { name: "stone", start: -15000, end: -10000 },
+  { name: "元谋", start: -1700000, location: "云南元谋" },
+  { name: "北京人", start: -70000, end: -20000, location: "北京周口店" },
+  { name: "山顶洞人", start: -18000, format: "氏族公社" },
+  { name: "河姆渡/半坡", start: -5000, end: -3000, format: "母系氏族公社" },
+  // { name: "大汶口", start: -3000, end: -2000, format: "父系氏族公社" },
+  {
+    name: "炎黄尧舜禹",
+    start: -2697, // 黄帝元年
+    end: -2070,
+    format: "炎帝,黄帝,尧,舜,禹",
+  },
+  { name: "夏", start: -2070, end: -1559 },
+  {
+    name: "商",
+    start: -1559,
+    end: -1045,
+    events: [{ name: "盘庚迁殷", start: -1300 }],
+  },
+  {
+    name: "周",
+    start: -1046,
+    end: -256,
+    events: [
+      { name: "国人暴动/周召共和", start: -841 },
+      { name: "犬戎攻周", start: -771 },
+    ],
+  },
+  { name: "秦", start: -221, end: -206 },
+  { name: "西楚", start: -206, end: -202 },
+  { name: "西汉", start: -202, end: 8 },
+  { name: "新", start: 8, end: 23 },
+  // { name: "玄汉", start: 23, end: 25 },
+  { name: "东汉", start: 25, end: 202 },
+  { name: "三国", start: 220, end: 280 },
+  { name: "晋", start: 265, end: 420 },
+  { name: "南北朝", start: 420, end: 689 },
+  { name: "隋", start: 581, end: 618 },
+  { name: "唐", start: 618, end: 907 },
+  { name: "五代", start: 907, end: 960 },
+  { name: "十国", start: 891, end: 979 },
+  { name: "宋", start: 960, end: 1279 },
+  { name: "元", start: 1271, end: 1368 },
+  { name: "明", start: 1368, end: 1644 },
+  { name: "清", start: 1644, end: 1912 },
+  { name: "中华民国", start: 1912 },
+  { name: "中华人民共和国", start: 1949 },
+];
+
+export default timeline;

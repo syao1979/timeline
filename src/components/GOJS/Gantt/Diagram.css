@@ -1,0 +1,17 @@
+.gojs-wrapper-div {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  border: solid 1px black;
+}
+
+.myTasks {
+  width: 150px;
+  margin-right: 2px;
+  border-right: solid 1px black;
+}
+
+.myGantt {
+  flex-grow: 1;
+  height: 400px;
+}

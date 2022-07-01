@@ -1,0 +1,11 @@
+.timelineController,
+.timeLinePlot {
+  margin: 10px, 40px;
+}
+.timeLinePlot {
+  display: flex;
+  width: 98%;
+  height: 470px;
+  border: solid 1px #888;
+  overflow: auto;
+}
