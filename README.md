@@ -1,21 +1,10 @@
-# gojs-react-basic
+# history timeline
 
-### By Northwoods Software for [GoJS](https://gojs.net)
+### A React app with mui / d3 / gojs
 
-This project provides a basic example of using GoJS in a React app.
-Check out the [Intro page on using GoJS with React](https://gojs.net/latest/intro/react.html) for more information.
+This project demostrates the use of GoJS, D3 and mui in a React app. It tries to apply these graphical libraries in showing historical data in a timeline fashion.
 
 It makes use of the [gojs-react](https://github.com/NorthwoodsSoftware/gojs-react) package to handle some boilerplate for setting up and tearing down a Diagram component.
-
-When running the sample, try moving around nodes, editing text, relinking, undoing (Ctrl-Z), etc. within the diagram
-and you'll notice the changes are reflected in the inspector area. You'll also notice that changes
-made in the inspector are reflected in the diagram. If you use the React dev tools,
-you can inspect the React state and see it updated as changes happen.
-
-For additional samples, see [gojs-react-samples](https://github.com/NorthwoodsSoftware/gojs-react-samples).
-
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-It also uses [immer](https://immerjs.github.io/immer/docs/introduction) to simplify state update operations.
 
 ## Installation
 
