@@ -178,15 +178,26 @@ const TimelineSpiral = ({
     drawTimeMarks();
     addTips();
     drawScale();
+    // drawReference(100);
   };
 
   //-- util functions
-  const yearMarkUnit = (pixelPerYear) => {
-    let markBy = 100; // 10 years
-    const MinPixelInMark = 20; // scale markBy to achieve >= 20pixel per mark
-    while (Math.ceil(pixelPerYear * markBy) - MinPixelInMark < 0) {
-      markBy *= 10;
+  const yearMarkUnit = () => {
+    if (!plotConfig) return null;
+
+    const pixDist = plotConfig.spiralLen + plotConfig.tailLen;
+    const yearDist = yearLimits[1] - yearLimits[2];
+
+    const MinPixelInMark = 80; // scale markBy to achieve >= this many pixels per mark
+    let markBy = 10; // 10 years
+    const yearJump = 10;
+    // start from markBy year, increment by yearJump, until markBy years represents ~MinPixelInMark pixels
+    while (true) {
+      const len = Math.ceil(plotConfig.pixPerYear * markBy);
+      if (len >= MinPixelInMark) break;
+      markBy += yearJump;
     }
+
     return markBy;
   };
 
@@ -310,7 +321,7 @@ const TimelineSpiral = ({
     const sYearMax = yearWindow[0] + plotConfig.spiralYearTotal;
     const yearMarks = []; // the spiral time mark data
     const path = plotConfig.path;
-    const markUnit = yearMarkUnit(plotConfig.pixPerYear);
+    const markUnit = yearMarkUnit();
     const zeroYearPos = zeroYearPixel();
     const { y: tailY } = spiralEndPoint();
     const pixInOneUnit = markUnit * plotConfig.pixPerYear;
@@ -482,8 +493,10 @@ const TimelineSpiral = ({
     const data = plotData;
     const spiralMarks = data.yearMarks.filter((d) => d.spiral);
 
-    const barHeight = 8;
+    const barShortHeight = 8;
+    const barTallHeight = 14;
     const barWidth = 2;
+    const markColor = (year) => (Math.abs(year) < 1 ? "red" : "#999999");
     if (!tailOnly && spiralMarks.length > 0) {
       // draw spiral year marks
       select("g")
@@ -493,13 +506,12 @@ const TimelineSpiral = ({
         .enter()
         .append("line")
         .attr("class", "spiral-year-mark")
-        // .attr("class", (d) => (Math.abs(d.year) === 0 ? "zero-year" : ""))
-        .style("stroke", (d) => (Math.abs(d.year) === 0 ? "red" : "black"))
+        .style("stroke", (d) => markColor(d.year))
         .style("stroke-width", barWidth)
         .attr("x1", (d) => d.x)
         .attr("y1", (d) => d.y)
         .attr("x2", (d) => d.x)
-        .attr("y2", (d) => d.y - barHeight)
+        .attr("y2", (d) => d.y - barShortHeight)
         .attr("startOffset", function (d) {
           return (d.linePer / spiralLen) * 100 + "%";
         })
@@ -534,7 +546,6 @@ const TimelineSpiral = ({
     if (tailMarks.length > 0) {
       let flap = false;
       const labelHeight = 20;
-      const deltaH = 16;
       // draw tail year marks
       select("g")
         .selectAll(".tail-year-mark")
@@ -543,15 +554,13 @@ const TimelineSpiral = ({
         .enter()
         .append("line")
         .attr("class", "tail-year-mark")
-        .attr("class", (d) => (Math.abs(d.year) === 0 ? "zero-year" : ""))
-        .style("stroke", (d) => (Math.abs(d.year) === 0 ? "red" : "black"))
+        .style("stroke", (d) => markColor(d.year))
         .style("stroke-width", barWidth)
         .attr("x1", (d) => d.x + data.xShift)
         .attr("y1", (d) => d.y + data.yShift)
         .attr("x2", (d) => d.x + data.xShift)
         .attr("y2", (d) => {
-          let dy = d.y + barHeight;
-          dy += flap ? deltaH : 0;
+          const dy = d.y + (flap ? barTallHeight : barShortHeight);
           flap = !flap;
           return dy + data.yShift;
         })
@@ -567,8 +576,7 @@ const TimelineSpiral = ({
           .append("text")
           .attr("x", d.x + data.xShift)
           .attr("y", () => {
-            let y = d.y + labelHeight;
-            y += flap ? deltaH : 0;
+            const y = d.y + 6 + (flap ? labelHeight : barTallHeight);
             flap = !flap;
             return y + data.yShift;
           }) //magic number here
@@ -695,7 +703,7 @@ const TimelineSpiral = ({
     const x0 = -220;
     const y0 = -230;
     const h = -4;
-    const len = plotConfig.pixPerYear * yearMarkUnit(plotConfig.pixPerYear);
+    const len = plotConfig.pixPerYear * yearMarkUnit();
     const data = [
       { x1: x0, y1: y0 - h, x2: x0, y2: y0 + h },
       { x1: x0, y1: y0, x2: x0 + len, y2: y0 },
@@ -724,7 +732,7 @@ const TimelineSpiral = ({
       {
         x: x0 + len * 0.5 - 14,
         y: y0 - 4,
-        text: `${yearMarkUnit(plotConfig.pixPerYear)}年`,
+        text: `${yearMarkUnit()}年`,
       },
       {
         x: x0 + 4,
@@ -744,6 +752,55 @@ const TimelineSpiral = ({
       .enter()
       .append("text")
       .attr("class", "scale-label")
+      .attr("x", (d) => d.x)
+      .attr("y", (d) => d.y)
+      .style("text-anchor", "start")
+      .style("font", "10px arial")
+      .text((d) => d.text)
+      .attr("xlink:href", "#tail");
+  };
+
+  const drawReference = (pixLen) => {
+    const x0 = -220;
+    const y0 = 230;
+    const h = -4;
+    const len = pixLen;
+    const data = [
+      { x1: x0, y1: y0 - h, x2: x0, y2: y0 + h },
+      { x1: x0, y1: y0, x2: x0 + len, y2: y0 },
+      { x1: x0 + len, y1: y0 - h, x2: x0 + len, y2: y0 + h },
+    ];
+
+    select("g").selectAll(".scale-ref-bar").remove();
+    select("g").selectAll(".scale-ref-label").remove();
+
+    select("g")
+      .selectAll(".scale-ref-bar")
+      .data(data)
+      .enter()
+      .append("line")
+      .style("class", "scale-ref-bar")
+      .style("stroke", "steelblue")
+      .style("stroke-width", 2)
+      .attr("x1", (d) => d.x1)
+      .attr("y1", (d) => d.y1)
+      .attr("x2", (d) => d.x2)
+      .attr("y2", (d) => d.y2);
+
+    const label = [
+      {
+        x: x0 + len * 0.5 - 14,
+        y: y0 - 4,
+        text: `${len}pixel`,
+      },
+    ];
+
+    select("g")
+      .selectAll(".scale-ref-label")
+      .data(label)
+      .enter()
+      .append("text")
+      .attr("class", "scale-ref-label")
       .attr("x", (d) => d.x)
       .attr("y", (d) => d.y)
       .style("text-anchor", "start")
@@ -839,14 +896,27 @@ const TimelineSpiral = ({
       });
   };
 
+  const minDist = () => {
+    const dist = yearLimits[1] - yearLimits[0];
+    if (dist <= 1000) {
+      return 50;
+    } else if (dist <= 10000) {
+      return 500;
+    } else {
+      return 1000;
+    }
+  };
+
   //-- event handlers
   const handleYearRangeChange = (_event, newValue, activeThumb) => {
     // activeThumb: 0->left; 1->right
     if (!Array.isArray(newValue)) {
       return;
     }
-    const minDistance = 800;
-    if (newValue[1] - newValue[0] < minDistance) {
+    const dist = newValue[1] - newValue[0];
+
+    const minDistance = minDist(dist);
+    if (dist < minDistance) {
       if (activeThumb === 0 && newValue[0] + minDistance <= yearWindow[1]) {
         setYearWindow([newValue[0], newValue[0] + minDistance]);
       } else if (newValue[1] - minDistance >= yearWindow[0]) {
@@ -864,7 +934,13 @@ const TimelineSpiral = ({
   const handleTimeHeadChange = (e) => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
-    if (order.index >= timeHeadArray.lookup[timeButt].index) return; // range zero or crossed
+    // console.log(
+    //   value,
+    //   timeButt,
+    //   timeHeadArray.lookup,
+    //   "[handleTimeHeadChange]"
+    // );
+    if (timeButt && order.index >= timeHeadArray.lookup[timeButt].index) return; // range zero or crossed
 
     const range = [
       order.start,
