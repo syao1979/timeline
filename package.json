@@ -3,9 +3,10 @@
   "version": "1.0.1",
   "description": "",
   "private": true,
+  "homepage": "https://syao1979.github.io/timeline",
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "BUILD_PATH=docs react-scripts build",
     "eject": "react-scripts eject"
   },
   "keywords": [],
