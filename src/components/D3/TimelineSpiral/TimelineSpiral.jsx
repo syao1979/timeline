@@ -11,6 +11,7 @@ import { select } from "d3";
 import timelineData from "../../../assets/data/timeline";
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
+import CheckCtl from "../../Controls/CheckCtl";
 
 const TAIL_LEN_IN_PIXEL = 1000;
 const YEAR_RANGE_DEFAULT = 5000;
@@ -20,7 +21,7 @@ const GROUP_LEAD_WIDTH = 6;
 const SPIRAL_START = 0;
 const SPIRAL_END = 2; // need to be even number to end at top
 const CIRCLE_R = 6;
-const color = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
+const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
 const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6];
 const THIS_YEAR = new Date().getFullYear();
 
@@ -38,6 +39,7 @@ const TimelineSpiral = ({
   const [spiralConfig, setSpiralConfig] = useState(null);
   const [plotConfig, setPlotConfig] = useState(null);
   const [plotData, setPlotData] = useState(null);
+  const [tipPosition, setTipPositioin] = useState(null);
 
   const [yearLimits, setYearLimits] = useState([end_year, start_year]); // year min and max
   const [yearWindow, setYearWindow] = useState([end_year, start_year]); // current view year range
@@ -46,11 +48,21 @@ const TimelineSpiral = ({
   const [timeHead, setTimeHead] = useState("");
   const [timeButtArray, setTimeButtArray] = useState({});
   const [timeButt, setTimeButt] = useState("");
-  const [tailOnly, setTailOnly] = useState(false);
-  const [showTimeMark, setShowTimeMark] = useState(false);
-  const [showTimeUnitBar, setShowTimeUnitBar] = useState(false);
+  const [tailOnly, _setTailOnly] = useState(false);
+  const [timeMark, _setTimeMark] = useState(false);
+  const [timeUnit, _setTimeUnit] = useState(false);
 
   const containerRef = useRef(null);
+
+  const setTailOnly = () => {
+    _setTailOnly(!tailOnly);
+  };
+  const setTimeMark = () => {
+    _setTimeMark(!timeMark);
+  };
+  const setTimeUnit = () => {
+    _setTimeUnit(!timeUnit);
+  };
   // const history = useHistory();
 
   // useEffect(() => {
@@ -153,16 +165,23 @@ const TimelineSpiral = ({
     if (plotData) {
       repaint();
     }
-  }, [plotData, showTimeMark]);
+  }, [plotData, timeMark]);
 
   useEffect(() => {
     if (plotData) {
       repaint();
     }
-  }, [showTimeUnitBar, showTimeMark]);
+  }, [timeUnit, timeMark]);
 
   const repaint = () => {
     select("g").selectAll("*").remove(); // clear all elements - for redraw
+    // Define the div for the tooltip
+    d3.select("body")
+      .append("div")
+      .attr("id", "tooltip")
+      .style("opacity", 0)
+      .style("font", "10px arial");
+
     if (!tailOnly) {
       // draw the spiral wire
       select("g")
@@ -177,11 +196,37 @@ const TimelineSpiral = ({
     drawTailLine();
     drawTailGroup();
     drawTimeMarks();
-    addTips();
+    drawTips();
     drawScale();
-    drawReference(100);
+    // drawReference(100);
+    // testLabel();
   };
 
+  const testLabel = (text = "Test Label") => {
+    const x0 = -220;
+    const y0 = 230;
+    const len = 100;
+    const label = [
+      {
+        x: x0 + len * 0.5 - 14,
+        y: y0 - 4,
+        text,
+      },
+    ];
+
+    select("g")
+      .selectAll(".text-label")
+      .remove()
+      .data(label)
+      .enter()
+      .append("text")
+      .attr("class", "text-label")
+      .attr("x", x0)
+      .attr("y", y0)
+      .style("text-anchor", "start")
+      .style("font", "10px arial")
+      .text(text);
+  };
   //-- util functions
   const yearMarkUnit = () => {
     if (!plotConfig) return null;
@@ -241,6 +286,9 @@ const TimelineSpiral = ({
     const sYearMax = yearWindow[0] + plotConfig.spiralYearTotal;
     const zeroYearPos = zeroYearPixel();
     const { y: tailY, x: tailX } = spiralEndPoint();
+
+    const spiralBlocks = []; // the spiral block data
+    const tailBlocks = [];
     const tailTimeScale = d3
       .scaleLinear()
       .domain([0, yearWindow[1]]) // zero year to current year range max
@@ -273,7 +321,7 @@ const TimelineSpiral = ({
       return block;
     };
 
-    const oneTailBlock = (d, event = false) => {
+    const oneTailBlockLeader = (d, event = false) => {
       const spixel = tailTimeScale(d.start); // pixel == 0 is the spiral / tail joint point
       let epixel = null;
       if (!event) {
@@ -298,58 +346,118 @@ const TimelineSpiral = ({
     };
 
     const spiralEventList = (list) => {
-      const events = [];
+      const collected = [];
+      const omited = [];
       list.forEach((d) => {
-        const block = oneSpiralBlock(d, true);
-        if (block) events.push(block);
+        if (d.start >= yearWindow[0]) {
+          const block = oneSpiralBlock(d, true);
+          if (block) {
+            collected.push(block);
+          } else {
+            omited.push(d);
+          }
+        }
       });
-      return events;
+      return { collected, omited };
+    };
+
+    const oneTailBlock = (d, psBlock = null, outRange = false) => {
+      const { block, anchor, epixel } = oneTailBlockLeader(d);
+      if (!outRange) tailBlocks.push(block);
+      if (psBlock) {
+        const anchor = 0; // tail leftend at x=0 when showing spiral
+        tailBlocks.push({
+          x: anchor,
+          y: tailY,
+          group: psBlock.group,
+          start: anchor,
+          end: epixel,
+          psBlock,
+        });
+        // if (psBlock.events) {
+        //   const elist = tailEventList(psBlock.events);
+        //   console.log(elist, "[psBlock events]");
+        //   tailBlocks.push(...elist);
+        // }
+      }
+      tailBlocks.push({
+        x: anchor,
+        y: tailY,
+        group: d.name,
+        start: anchor,
+        end: epixel,
+      });
+      if (d.events) {
+        const elist = tailEventList(d.events);
+        tailBlocks.push(...elist);
+      }
     };
 
     const tailEventList = (list) => {
       const events = [];
       list.forEach((d) => {
-        const { block } = oneTailBlock(d, true);
+        const { block } = oneTailBlockLeader(d, true);
         if (block) events.push(block);
       });
       return events;
     };
 
-    const spiralBlocks = []; // the spiral block data
-    const tailBlocks = [];
-    // let block = null;
+    let preSpiralBlock = null;
+    let leftOutRangeData = null; // the previous data < spiral min
     for (let i = 0; i < timelineData.length; i++) {
       const d = timelineData[i];
       if (d.start >= yearWindow[0] && d.start <= yearWindow[1]) {
         if (!tailOnly && d.start <= sYearMax) {
+          // spiral blocks
           const block = oneSpiralBlock(d);
           spiralBlocks.push(block);
+          preSpiralBlock = { ...block };
+
+          if (leftOutRangeData) {
+            if (leftOutRangeData.events) {
+              const { collected, omited } = spiralEventList(
+                leftOutRangeData.events
+              );
+              spiralBlocks.push(...collected);
+            }
+            leftOutRangeData = null;
+          }
+
           if (d.events) {
-            const elist = spiralEventList(d.events);
-            // console.log(d.name, elist, "[spiralEventList]");
-            spiralBlocks.push(...elist);
+            const { collected, omited } = spiralEventList(d.events);
+            spiralBlocks.push(...collected);
+            preSpiralBlock.events = omited;
           }
         } else {
           // data on tail
-          const { block, anchor, epixel } = oneTailBlock(d);
-          tailBlocks.push(block);
-          tailBlocks.push({
-            x: anchor,
-            y: tailY,
-            group: d.name,
-            start: anchor,
-            end: epixel,
-          });
-          if (d.events) {
-            const elist = tailEventList(d.events);
-            // console.log(d.name, elist, "[tailEventList]");
-            tailBlocks.push(...elist);
+          if (leftOutRangeData) {
+            //
+            oneTailBlock({ ...leftOutRangeData, end: d.end }, null, true);
+            leftOutRangeData = null;
           }
+          oneTailBlock(d, preSpiralBlock);
+          if (preSpiralBlock) preSpiralBlock = null;
         }
+      } else if (d.start < yearWindow[0]) {
+        leftOutRangeData = d;
       }
     }
 
-    // console.log(tailY, "[tailY]");
+    if (preSpiralBlock && tailBlocks.length === 0) {
+      const anchor = tailTimeScale(yearWindow[1] - plotConfig.tailYearTotal);
+      tailBlocks.push({
+        x: anchor,
+        y: tailY,
+        group: preSpiralBlock.group,
+        start: anchor,
+        end: tailTimeScale(yearWindow[1]),
+        preSpiralBlock,
+      });
+
+      preSpiralBlock = null;
+    }
+
+    // console.log(tailBlocks, preSpiralBlock, "[tailBlocks]");
     return {
       spiralBlocks,
       tailBlocks,
@@ -489,7 +597,7 @@ const TimelineSpiral = ({
         .attr("width", (d) => 4) //barWidth)
         .attr("class", "leader")
         .attr("height", (d) => 8) // const bar height
-        .style("fill", (d) => color(d.group))
+        .style("fill", (d) => groupColor(d.group))
         .style("stroke", "stroke", "none")
         .style("opacity", RECT_OPACITY)
         .attr(
@@ -509,12 +617,13 @@ const TimelineSpiral = ({
         .attr("cx", (d) => d.x)
         .attr("cy", (d) => d.y)
         .attr("r", (_, i) => CIRCLE_R)
-        .style("fill", (d) => color(d.group))
+        .style("fill", (d) => groupColor(d.group))
         .attr("stroke", (d) => "#000")
         .style("opacity", 0.5);
 
       // draw spiral label
       let lastBlock = null;
+      let lastEvent = null;
       select("g")
         .selectAll(".spiral-block-label")
         .remove()
@@ -525,14 +634,15 @@ const TimelineSpiral = ({
           let dy = 10;
           if (d.event) {
             dy = -10;
-            if (lastBlock) {
-              const delta = Math.abs(d.linePer - lastBlock.linePer);
-              if (delta < 50) {
+            if (lastEvent) {
+              const delta = Math.abs(d.linePer - lastEvent.linePer);
+              // console.log(lastEvent.group, d.group, delta, "[diff]");
+              if (delta < 60) {
                 dy = 16;
               }
             }
           }
-          lastBlock = d;
+          lastEvent = d;
           return dy;
         }) // move down by 10 pixel
         .style("text-anchor", "start")
@@ -543,9 +653,10 @@ const TimelineSpiral = ({
           let label =
             d.group +
             (d.event ? "" : `(${formatYearValue(d.group_start_year)})`);
+
           if (lastBlock) {
             const delta = Math.abs(d.linePer - lastBlock.linePer);
-            if (delta < BLOCK_MIN_GAP) {
+            if (delta > 0 && delta < BLOCK_MIN_GAP) {
               label = "";
             }
           }
@@ -554,7 +665,7 @@ const TimelineSpiral = ({
         })
         // place text along spiral
         .attr("xlink:href", "#spiral")
-        .style("fill", (d) => (d.event ? color(d.group) : "grey"))
+        .style("fill", (d) => (d.event ? groupColor(d.group) : "grey"))
         .attr("startOffset", (d) => {
           return (d.linePer / spiralLen) * 100 + "%";
         });
@@ -562,7 +673,7 @@ const TimelineSpiral = ({
   };
 
   const drawTimeMarks = () => {
-    if (!showTimeMark) return;
+    if (!timeMark) return;
     const spiralLen = plotConfig.spiralLen;
     const data = plotData;
     const spiralMarks = data.yearMarks.filter((d) => d.spiral);
@@ -689,6 +800,7 @@ const TimelineSpiral = ({
     const avoidGroupOverlap = false;
 
     // draw the rect on tail line
+    const RECT_HEIGHT = 4;
     if (data.tailBlocks.length > 0) {
       select("g").selectAll(".tailgroup").remove();
       select("g")
@@ -717,16 +829,22 @@ const TimelineSpiral = ({
             lastGroup = d.group;
           }
 
-          return d.group_leader ? y - 8 : y - 4;
+          return d.group_leader ? y - RECT_HEIGHT * 2 : y - RECT_HEIGHT;
         })
         .attr("width", (d) => {
           const w = d.end - d.start;
           return w > 0 ? w : 2;
         })
         .attr("height", (d) => (d.group_leader ? 8 : 4))
-        .style("fill", (d) => color(d.group))
-        .style("stroke", (d) => color(d.group))
+        .style("fill", (d) => groupColor(d.group))
+        .style("stroke", (d) => groupColor(d.group))
         .style("opacity", RECT_OPACITY);
+      // .on("mouseover", (_, d) => {
+      //   if (d.group_leader) addTooltip(d);
+      // })
+      // .on("mouseout", (_, d) => {
+      //   if (d.group_leader) rmTooltip();
+      // });
     }
 
     // tail event circle
@@ -739,13 +857,15 @@ const TimelineSpiral = ({
       .style("class", "tail-event-circle")
       .attr("class", "leader")
       .attr("cx", (d) => d.x + data.xShift)
-      .attr("cy", (d) => d.y + data.yShift)
+      .attr("cy", (d) => d.y + data.yShift - RECT_HEIGHT * 0.5)
       .attr("r", (_, i) => CIRCLE_R)
-      .style("fill", (d) => color(d.group))
+      .style("fill", (d) => groupColor(d.group))
       .attr("stroke", (d) => "#000")
       .style("opacity", 0.5);
+    // .on("mouseover", (_, d) => addTooltip(d))
+    // .on("mouseout", () => rmTooltip());
 
-    // draw text rect label on tail line
+    // draw leader label on tail line
     if (data.tailBlocks.length > 0) {
       let flip = false; //alternatively show label on top / down of line to avoid overlapping
       const aheadPos = { true: [-1000], false: [-1000] };
@@ -799,7 +919,7 @@ const TimelineSpiral = ({
   };
 
   const drawScale = () => {
-    if (!showTimeUnitBar) return;
+    if (!timeUnit) return;
     const x0 = -220;
     const y0 = -230;
     const h = -4;
@@ -897,6 +1017,7 @@ const TimelineSpiral = ({
 
     select("g")
       .selectAll(".scale-ref-label")
+      .remove()
       .data(label)
       .enter()
       .append("text")
@@ -905,8 +1026,7 @@ const TimelineSpiral = ({
       .attr("y", (d) => d.y)
       .style("text-anchor", "start")
       .style("font", "10px arial")
-      .text((d) => d.text)
-      .attr("xlink:href", "#tail");
+      .text((d) => d.text);
 
     // tryout
     // const cdata = [
@@ -929,72 +1049,35 @@ const TimelineSpiral = ({
     //   .style("opacity", 0.5);
   };
 
-  const addTips = () => {
-    const addInfo = (d) => {
-      let text = d.event
-        ? `${d.group} : ${formatYearValue(d.group_start_year)}`
-        : `朝代: ${d.group}`;
-      if (!d.event) {
-        text +=
-          `[${formatYearValue(d.group_start_year)} - ${
-            d.group_end_year !== undefined
-              ? ` ${formatYearValue(d.group_end_year)}`
-              : ""
-          }]` +
-          `${
-            d.group_end_year !== undefined
-              ? ` [${d.group_end_year - d.group_start_year}]`
-              : ""
-          }`;
-      }
+  const addInfo = (x, y, d) => {
+    let text = d.event
+      ? `${d.group} : ${formatYearValue(d.group_start_year)}`
+      : `朝代: ${d.group}`;
+    if (!d.event) {
+      text +=
+        `[${formatYearValue(d.group_start_year)} - ${
+          d.group_end_year !== undefined
+            ? ` ${formatYearValue(d.group_end_year)}`
+            : ""
+        }]` +
+        `${
+          d.group_end_year !== undefined
+            ? ` [${d.group_end_year - d.group_start_year}]`
+            : ""
+        }`;
+    }
 
-      d3.select("#info").html(text);
-    };
-    const tooltip = d3
-      .select("#timeline")
-      .append("div")
-      .attr("class", "tooltip");
-
-    tooltip
-      .append("div")
-      .attr("class", "group-leader-tip")
-      .style("font", "10px arial")
-      .style("position", "absolute");
-    // tooltip.append("div").attr("class", "value").style("font", "10px arial");
-
+    setTipPositioin([x, y, text, d.event ? groupColor(d.group) : "#000"]);
+  };
+  const drawTips = () => {
     select("g")
       .selectAll(".leader")
-      .on("mouseover", function (_event, d) {
-        addInfo(d);
-        d3.select(this)
-          .style("fill", "#FFFFFF")
-          .style("stroke", "#000000")
-          .style("stroke-width", "1px");
-
-        const gid = `#${d3.select(this).attr("gid")}`;
-        select("g").select(gid).style("opacity", 1);
-        // tooltip.style("display", "block");
-        // tooltip.style("opacity", 2);
+      .on("mouseover", (event, d) => {
+        addInfo(event.pageY, event.pageX, d);
       })
-      .on("mousemove", function (event, d) {
-        tooltip
-          .style("top", `${event.clientY + 10}px`)
-          .style("left", `${event.clientX - 25}px`);
-        // tooltip
-        //   .style("top", `${event.layerY + 10}px`)
-        //   .style("left", `${event.layerX - 25}px`);
-      })
-      .on("mouseout", function (event, d) {
-        d3.select("#info").html("");
-        d3.selectAll("rect,circle")
-          .style("fill", (d) => color(d.group))
-          .style("stroke", "none");
-
-        tooltip.style("display", "none");
-        tooltip.style("opacity", 0);
-
-        const gid = `#${d3.select(this).attr("gid")}`;
-        select("g").select(gid).style("opacity", RECT_OPACITY);
+      .on("mouseout", () => {
+        // console.log("out");
+        setTipPositioin(null);
       });
   };
 
@@ -1072,17 +1155,9 @@ const TimelineSpiral = ({
   // console.log(timeHead, timeButt, yearLimits, yearWindow, "[time head/butt]");
   const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
+  // console.log(tipPosition, "[tipPosition]");
   return (
     <>
-      <div
-        id="info"
-        style={{
-          width: "100%",
-          height: 12,
-          font: "10px arial",
-          margin: "4px 0px",
-        }}
-      ></div>
       <div id="timeline" style={{ border: "solid 1px #666" }}>
         {spiralConfig ? null : "Loading..."}
         <svg
@@ -1102,55 +1177,23 @@ const TimelineSpiral = ({
           />
 
           <SelectCtl
-            label="From"
+            label="头"
             value={timeHead}
             valueArray={timeHeadArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeHeadChange}
             width={80}
           />
           <SelectCtl
-            label="To"
+            label="尾"
             value={timeButt}
             valueArray={timeButtArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeButtChange}
             width={80}
           />
 
-          <FormGroup style={{ marginLeft: 40 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={tailOnly}
-                  onClick={() => setTailOnly(!tailOnly)}
-                />
-              }
-              label="On tail"
-            />
-          </FormGroup>
-
-          <FormGroup style={{ marginLeft: 40 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={showTimeMark}
-                  onClick={() => setShowTimeMark(!showTimeMark)}
-                />
-              }
-              label="Time Mark"
-            />
-          </FormGroup>
-
-          <FormGroup style={{ marginLeft: 40 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={showTimeUnitBar}
-                  onClick={() => setShowTimeUnitBar(!showTimeUnitBar)}
-                />
-              }
-              label="Time Unit"
-            />
-          </FormGroup>
+          <CheckCtl label="直线" callback={setTailOnly} checked={tailOnly} />
+          <CheckCtl label="时标" callback={setTimeMark} checked={timeMark} />
+          <CheckCtl label="单位" callback={setTimeUnit} checked={timeUnit} />
 
           <SelectCtl
             label="Loops"
@@ -1158,6 +1201,24 @@ const TimelineSpiral = ({
             valueArray={SPIRAL_LOOP_ARRAY}
             handleChange={handleSpiralLoopChange}
           />
+          {tipPosition ? (
+            <div
+              style={{
+                position: "absolute",
+                border: "solid 1px #000",
+                font: "10px arial",
+                padding: 10,
+                backgroundColor: "#eee",
+                color: tipPosition[3],
+                borderRadius: 4,
+                zIndex: 100,
+                top: tipPosition[0],
+                left: tipPosition[1],
+              }}
+            >
+              {tipPosition[2]}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </>

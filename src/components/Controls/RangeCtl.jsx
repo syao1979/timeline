@@ -19,6 +19,7 @@ const TimelineRange = ({
         value={value}
         onChange={handleChange}
         valueLabelDisplay="auto"
+        size="small"
       />
     </Box>
   );
