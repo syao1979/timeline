@@ -301,11 +301,8 @@ const TimelineSpiral = ({
     const tailBlocks = [];
     const tailTimeScale = d3
       .scaleLinear()
-      .domain([0, yearWindow[1]]) // zero year to current year range max
-      .range([
-        !tailOnly ? zeroYearPos - spiralLen : zeroYearPos,
-        plotConfig.tailLen,
-      ]);
+      .domain([yearWindow[1] - plotConfig.tailYearTotal, yearWindow[1]]) // tail year range
+      .range([0, plotConfig.tailLen]); // tail pixel range
 
     const oneSpiralBlock = (d, event = false) => {
       let block = null;
@@ -338,6 +335,9 @@ const TimelineSpiral = ({
         epixel = tailTimeScale(d.end);
         if (!epixel || epixel > plotConfig.tailLen)
           epixel = tailTimeScale(yearWindow[1]);
+        if (spixel < 0) {
+          return null;
+        }
       }
 
       const anchor = spixel + GROUP_LEAD_WIDTH; // group leading block width
@@ -372,7 +372,10 @@ const TimelineSpiral = ({
     };
 
     const oneTailBlock = (d, leftoverRaw = null) => {
-      const { block, anchor, epixel } = oneTailBlockLeader(d);
+      const blockData = oneTailBlockLeader(d);
+      if (!blockData) return;
+
+      const { block, anchor, epixel } = blockData;
       if (leftoverRaw) {
         const xPix = tailTimeScale(yearWindow[1] - plotConfig.tailYearTotal); //tail left end pixel; =0 when showing spiral,
         tailBlocks.push({
@@ -1170,7 +1173,11 @@ const TimelineSpiral = ({
   const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
   const debug = () => {
-    console.info(buildData(true), "DEBUG");
+    const scale = d3
+      .scaleLinear()
+      .domain([1378, 2022]) // tail year range
+      .range([0, 1000]); // tail pixel range
+    console.info(scale(1368), "DEBUG");
   };
   // console.log(tipPosition, "[tipPosition]");
   return (
@@ -1218,9 +1225,9 @@ const TimelineSpiral = ({
             valueArray={SPIRAL_LOOP_ARRAY}
             handleChange={handleSpiralLoopChange}
           />
-          <Button variant="outlined" color="error" size="small" onClick={debug}>
+          {/* <Button variant="outlined" color="error" size="small" onClick={debug}>
             Debug
-          </Button>
+          </Button> */}
           {tipPosition ? (
             <div
               style={{
