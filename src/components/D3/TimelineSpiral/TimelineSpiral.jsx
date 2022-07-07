@@ -1,9 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useHistory, useParams } from "react-router-dom";
+// import { useHistory, useParams } from "react-router-dom";
 
-import FormGroup from "@mui/material/FormGroup";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Checkbox from "@mui/material/Checkbox";
+import Button from "@mui/material/Button";
 
 import * as d3 from "d3";
 import { select } from "d3";
@@ -12,6 +10,8 @@ import timelineData from "../../../assets/data/timeline";
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
 import CheckCtl from "../../Controls/CheckCtl";
+
+import { normalizeYear, cleanNameString } from "../../../utils/Formatter";
 
 const TAIL_LEN_IN_PIXEL = 1000;
 const YEAR_RANGE_DEFAULT = 5000;
@@ -22,7 +22,7 @@ const SPIRAL_START = 0;
 const SPIRAL_END = 2; // need to be even number to end at top
 const CIRCLE_R = 6;
 const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
-const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6];
+const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const THIS_YEAR = new Date().getFullYear();
 
 const TimelineSpiral = ({
@@ -227,24 +227,34 @@ const TimelineSpiral = ({
       .style("font", "10px arial")
       .text(text);
   };
+
   //-- util functions
+  const yearRoundNumber = (yearDist) => {
+    return yearDist > 10000 ? 10000 : 5;
+  };
   const yearMarkUnit = () => {
     if (!plotConfig) return null;
 
-    const pixDist = plotConfig.spiralLen + plotConfig.tailLen;
-    const yearDist = yearLimits[1] - yearLimits[2];
+    const targetPixDist = 100; // the target pix distance for year mark spacing
 
-    const MinPixelInMark = 80; // scale markBy to achieve >= this many pixels per mark
-    let markBy = 10; // 10 years
-    const yearJump = 10;
-    // start from markBy year, increment by yearJump, until markBy years represents ~MinPixelInMark pixels
+    const pixDist = plotConfig.spiralLen + plotConfig.tailLen;
+    const yearDist = yearWindow[1] - yearWindow[0];
+    const pixPerYear = pixDist / yearDist;
+    const yearNumInTargetPixDist = targetPixDist / pixPerYear; // # years in targetPixDist
+    const roundVal = yearRoundNumber(yearDist);
+    const minYearDist = Math.ceil(yearNumInTargetPixDist / roundVal) * roundVal; // round to yearDist multiples
+
+    const MinPixelInMark = 100; // scale markYearDist to achieve >= this many pixels per mark
+    let markYearDist = minYearDist; //
+    // start from markYearDist year, increment by stepSize, until markYearDist years represents ~MinPixelInMark pixels
     while (true) {
-      const len = Math.ceil(plotConfig.pixPerYear * markBy);
+      const len = Math.ceil(plotConfig.pixPerYear * markYearDist);
       if (len >= MinPixelInMark) break;
-      markBy += yearJump;
+      markYearDist += markYearDist;
     }
 
-    return markBy;
+    // console.log(markYearDist, yearNumInTargetPixDist, yearDist, "[mark Y D]");
+    return markYearDist;
   };
 
   const zeroYearPixel = () => {
@@ -279,7 +289,7 @@ const TimelineSpiral = ({
       : { x: 0, y: -200 };
   };
 
-  const buildData = () => {
+  const buildData = (verbose = false) => {
     const spiralLen = plotConfig.spiralLen;
     const path = plotConfig.path;
 
@@ -361,25 +371,36 @@ const TimelineSpiral = ({
       return { collected, omited };
     };
 
-    const oneTailBlock = (d, psBlock = null, outRange = false) => {
+    const oneTailBlock = (d, leftoverRaw = null) => {
       const { block, anchor, epixel } = oneTailBlockLeader(d);
-      if (!outRange) tailBlocks.push(block);
-      if (psBlock) {
-        const anchor = 0; // tail leftend at x=0 when showing spiral
+      if (leftoverRaw) {
+        const xPix = tailTimeScale(yearWindow[1] - plotConfig.tailYearTotal); //tail left end pixel; =0 when showing spiral,
         tailBlocks.push({
-          x: anchor,
+          x: xPix,
           y: tailY,
-          group: psBlock.group,
-          start: anchor,
-          end: epixel,
-          psBlock,
+          group: leftoverRaw.name,
+          start: xPix,
+          end: block.x,
+          leftoverRaw,
         });
-        // if (psBlock.events) {
-        //   const elist = tailEventList(psBlock.events);
-        //   console.log(elist, "[psBlock events]");
-        //   tailBlocks.push(...elist);
-        // }
+
+        if (leftoverRaw.events) {
+          if (!tailOnly && leftoverRaw.start <= sYearMax) {
+            // from spiral
+            const { collected, omited } = spiralEventList(leftoverRaw.events);
+            spiralBlocks.push(...collected);
+            if (omited?.length > 0) {
+              const elist = tailEventList(omited);
+              tailBlocks.push(...elist);
+            }
+          } else {
+            const elist = tailEventList(leftoverRaw.events);
+            tailBlocks.push(...elist);
+          }
+        }
       }
+
+      tailBlocks.push(block);
       tailBlocks.push({
         x: anchor,
         y: tailY,
@@ -402,59 +423,58 @@ const TimelineSpiral = ({
       return events;
     };
 
-    let preSpiralBlock = null;
-    let leftOutRangeData = null; // the previous data < spiral min
+    // let preSpiralBlock = null;
+    let lastRawData = null; // the previous data < spiral min
     for (let i = 0; i < timelineData.length; i++) {
       const d = timelineData[i];
       if (d.start >= yearWindow[0] && d.start <= yearWindow[1]) {
+        // entire year range
         if (!tailOnly && d.start <= sYearMax) {
           // spiral blocks
           const block = oneSpiralBlock(d);
+          if (verbose) {
+            console.log(d.name, block, d.events?.length, "[spiral data]");
+          }
           spiralBlocks.push(block);
-          preSpiralBlock = { ...block };
 
-          if (leftOutRangeData) {
-            if (leftOutRangeData.events) {
-              const { collected, omited } = spiralEventList(
-                leftOutRangeData.events
-              );
+          if (lastRawData && lastRawData.start < yearWindow[0]) {
+            if (lastRawData.events) {
+              const { collected, omited } = spiralEventList(lastRawData.events);
               spiralBlocks.push(...collected);
             }
-            leftOutRangeData = null;
+            lastRawData = null;
           }
-
+          lastRawData = d;
           if (d.events) {
             const { collected, omited } = spiralEventList(d.events);
             spiralBlocks.push(...collected);
-            preSpiralBlock.events = omited;
           }
         } else {
           // data on tail
-          if (leftOutRangeData) {
-            //
-            oneTailBlock({ ...leftOutRangeData, end: d.end }, null, true);
-            leftOutRangeData = null;
+          if (verbose && lastRawData) {
+            console.log(lastRawData, d.name, "[tail data]");
           }
-          oneTailBlock(d, preSpiralBlock);
-          if (preSpiralBlock) preSpiralBlock = null;
+
+          oneTailBlock(d, lastRawData);
+          lastRawData = null;
         }
       } else if (d.start < yearWindow[0]) {
-        leftOutRangeData = d;
+        lastRawData = d;
       }
     }
 
-    if (preSpiralBlock && tailBlocks.length === 0) {
-      const anchor = tailTimeScale(yearWindow[1] - plotConfig.tailYearTotal);
+    if (lastRawData && tailBlocks.length === 0) {
+      const anchor = tailTimeScale(yearWindow[1] - plotConfig.tailYearTotal); //tail left end pixel
       tailBlocks.push({
         x: anchor,
         y: tailY,
-        group: preSpiralBlock.group,
+        group: lastRawData.name,
         start: anchor,
         end: tailTimeScale(yearWindow[1]),
-        preSpiralBlock,
+        lastRawData,
       });
 
-      preSpiralBlock = null;
+      lastRawData = null;
     }
 
     // console.log(tailBlocks, preSpiralBlock, "[tailBlocks]");
@@ -475,7 +495,7 @@ const TimelineSpiral = ({
     // console.log(plotConfig, "[BM]");
     const spiralLen = plotConfig.spiralLen;
     const sYearMax = yearWindow[0] + plotConfig.spiralYearTotal;
-    const yearMarks = []; // the spiral time mark data
+    const yearMarks = []; // the time mark data
     const path = plotConfig.path;
     const markUnit = yearMarkUnit();
     const zeroYearPos = zeroYearPixel();
@@ -505,9 +525,11 @@ const TimelineSpiral = ({
           spiralLen,
           path
         );
+        // console.log(year, pos, "[spiralM]");
         yearMarks.push({
           spiral,
           ...pos,
+          year,
         });
       } else {
         yearMarks.push({ x: mpix, y: tailY, year, spiral, linePer: mpix });
@@ -566,8 +588,6 @@ const TimelineSpiral = ({
     return pos;
   };
 
-  const formatYearValue = (year) => (year < 0 ? `前${-year}` : year);
-
   const partitionYear = (totalYears, spiralLen, tailLen) => {
     const totalLen = spiralLen + tailLen;
     const spiralPer = spiralLen / totalLen;
@@ -583,8 +603,8 @@ const TimelineSpiral = ({
     const spiralLen = plotConfig.spiralLen;
     const data = plotData;
 
-    // draw bar and label
     if (data.spiralBlocks.length > 0) {
+      // draw spiral group bar
       select("g")
         .selectAll("rect")
         .remove()
@@ -621,7 +641,7 @@ const TimelineSpiral = ({
         .attr("stroke", (d) => "#000")
         .style("opacity", 0.5);
 
-      // draw spiral label
+      // draw spiral label: omit label if it is too close to previous label
       let lastBlock = null;
       let lastEvent = null;
       select("g")
@@ -631,12 +651,11 @@ const TimelineSpiral = ({
         .enter()
         .append("text")
         .attr("dy", (d) => {
-          let dy = 10;
+          let dy = 10; // move down by 10 pixel
           if (d.event) {
             dy = -10;
             if (lastEvent) {
               const delta = Math.abs(d.linePer - lastEvent.linePer);
-              // console.log(lastEvent.group, d.group, delta, "[diff]");
               if (delta < 60) {
                 dy = 16;
               }
@@ -644,15 +663,14 @@ const TimelineSpiral = ({
           }
           lastEvent = d;
           return dy;
-        }) // move down by 10 pixel
+        })
         .style("text-anchor", "start")
         .style("font", "10px arial")
         .style("class", "spiral-block-label")
         .append("textPath")
         .text((d) => {
           let label =
-            d.group +
-            (d.event ? "" : `(${formatYearValue(d.group_start_year)})`);
+            d.group + (d.event ? "" : `(${normalizeYear(d.group_start_year)})`);
 
           if (lastBlock) {
             const delta = Math.abs(d.linePer - lastBlock.linePer);
@@ -669,6 +687,124 @@ const TimelineSpiral = ({
         .attr("startOffset", (d) => {
           return (d.linePer / spiralLen) * 100 + "%";
         });
+    }
+  };
+
+  const drawTailGroup = () => {
+    const data = plotData;
+    // console.log(data, "[drawTailGroup]");
+    let lastX = null;
+    let lastGroup = null;
+    let lastY = null;
+    const avoidGroupOverlap = false;
+
+    // draw the rect on tail line
+    const RECT_HEIGHT = 4;
+    if (data.tailBlocks.length > 0) {
+      select("g").selectAll(".tailgroup").remove();
+      select("g")
+        .selectAll(".tailgroup")
+        .data(data.tailBlocks.filter((d) => d.group && !d.event))
+        .enter()
+        .append("rect")
+        .attr("class", "tailgroup")
+        .attr("gid", (d, i) => `${cleanNameString(d.group)}-${i + 1}`)
+        .attr("id", (d, i) => `${cleanNameString(d.group)}-${i}`)
+        .attr("fill", "navy")
+        .attr("class", (d) => (d.group_leader ? "leader" : "noleader"))
+        .attr("x", (d) => d.start + data.xShift)
+        .attr("y", (d) => {
+          let y = d.y + data.yShift;
+          if (avoidGroupOverlap) {
+            if (lastX && lastGroup) {
+              if (d.x < lastX && d.group !== lastGroup) {
+                y -= 10;
+              } else if (d.group === lastGroup) {
+                y = lastY;
+              }
+            }
+            lastX = d.x;
+            lastY = y;
+            lastGroup = d.group;
+          }
+
+          return d.group_leader ? y - RECT_HEIGHT * 2 : y - RECT_HEIGHT;
+        })
+        .attr("width", (d) => {
+          const w = d.end - d.start;
+          return w > 0 ? w : 2;
+        })
+        .attr("height", (d) => (d.group_leader ? 8 : 4))
+        .style("fill", (d) => groupColor(d.group))
+        .style("stroke", (d) => groupColor(d.group))
+        .style("opacity", RECT_OPACITY);
+    }
+
+    // tail event circle
+    select("g")
+      .selectAll(".tail-event-circle")
+      .remove()
+      .data(data.tailBlocks.filter((d) => d.event))
+      .enter()
+      .append("circle")
+      .style("class", "tail-event-circle")
+      .attr("class", "leader")
+      .attr("cx", (d) => d.x + data.xShift)
+      .attr("cy", (d) => d.y + data.yShift - RECT_HEIGHT * 0.5)
+      .attr("r", (_, i) => CIRCLE_R)
+      .style("fill", (d) => groupColor(d.group))
+      .attr("stroke", (d) => "#000")
+      .style("opacity", 0.5);
+
+    // draw leader AND event label on tail line, skip event label if it is too close to previous event
+    if (data.tailBlocks.length > 0) {
+      let flip = false; //alternatively show label on top / down of line to avoid overlapping
+      const aheadPos = { true: [-1000], false: [-1000] };
+      let lastBlock = null;
+      select("g")
+        .selectAll(".taillabel")
+        .data(data.tailBlocks.filter((d) => d.group_start_year))
+        .enter()
+        .append("text")
+        .attr("class", "tailgroup")
+        .attr("x", (d) => (d.event ? 0 : d.x + data.xShift))
+        .attr("y", (d) => {
+          if (d.event) return 0;
+          const y = d.y + (flip ? 12 : -12);
+          const lastx = aheadPos[flip].sort().reverse()[0];
+          // console.log(Math.abs(d.x - lastx), flip, d.group);
+          flip = !flip;
+          if (Math.abs(d.x - lastx) < 50) {
+            flip = !flip;
+          }
+          aheadPos[flip].push(d.x);
+          return y + data.yShift;
+        })
+        .style("text-anchor", "start")
+        .style("font", "10px arial")
+        .text((d) => {
+          let label =
+            d.group + (d.event ? "" : `(${normalizeYear(d.group_start_year)})`);
+          if (lastBlock) {
+            const dx = Math.abs(d.x - lastBlock.x);
+
+            if (d.event && lastBlock.event && dx < 16) {
+              label = "";
+            }
+          }
+          lastBlock = d;
+          return label;
+        })
+        .attr(
+          "transform",
+          (d) => {
+            if (d.event) {
+              return `translate(${d.x + data.xShift + 4},${
+                d.y + data.yShift - 10
+              })rotate(-90)`;
+            }
+          } // rotate the text
+        );
     }
   };
 
@@ -717,7 +853,10 @@ const TimelineSpiral = ({
         .style("font", "10px arial")
         .style("class", "spiral-year-mark-label")
         .append("textPath")
-        .text((d) => d.year.toFixed(0))
+        .text(
+          (d) => normalizeYear(d.year)
+          // d.year < -9999 ? normalizeYear(d.year) : formatYearValue(d.year)
+        )
         // place text along spiral
         .attr("xlink:href", "#spiral")
         .style("fill", "grey")
@@ -769,7 +908,7 @@ const TimelineSpiral = ({
           .style("font", "10px arial")
           // .style("color", () => (d.year === 0 ? "red" : "black"))
           .attr("class", "tail-year-mark-label") //easy to style with CSS
-          .text(d.year.toFixed(0));
+          .text(normalizeYear(d.year));
       });
     }
     // select("g").selectAll(".zero-year").style("color", "red");
@@ -790,140 +929,14 @@ const TimelineSpiral = ({
       .attr("y2", data.tailY + data.yShift);
   };
 
-  const cleanNameForId = (name) => name.replace("/", "");
-  const drawTailGroup = () => {
-    const data = plotData;
-    // console.log(data, "[drawTailGroup]");
-    let lastX = null;
-    let lastGroup = null;
-    let lastY = null;
-    const avoidGroupOverlap = false;
-
-    // draw the rect on tail line
-    const RECT_HEIGHT = 4;
-    if (data.tailBlocks.length > 0) {
-      select("g").selectAll(".tailgroup").remove();
-      select("g")
-        .selectAll(".tailgroup")
-        .data(data.tailBlocks.filter((d) => d.group && !d.event))
-        .enter()
-        .append("rect")
-        .attr("class", "tailgroup")
-        .attr("gid", (d, i) => `${cleanNameForId(d.group)}-${i + 1}`)
-        .attr("id", (d, i) => `${cleanNameForId(d.group)}-${i}`)
-        .attr("fill", "navy")
-        .attr("class", (d) => (d.group_leader ? "leader" : "noleader"))
-        .attr("x", (d) => d.start + data.xShift)
-        .attr("y", (d) => {
-          let y = d.y + data.yShift;
-          if (avoidGroupOverlap) {
-            if (lastX && lastGroup) {
-              if (d.x < lastX && d.group !== lastGroup) {
-                y -= 10;
-              } else if (d.group === lastGroup) {
-                y = lastY;
-              }
-            }
-            lastX = d.x;
-            lastY = y;
-            lastGroup = d.group;
-          }
-
-          return d.group_leader ? y - RECT_HEIGHT * 2 : y - RECT_HEIGHT;
-        })
-        .attr("width", (d) => {
-          const w = d.end - d.start;
-          return w > 0 ? w : 2;
-        })
-        .attr("height", (d) => (d.group_leader ? 8 : 4))
-        .style("fill", (d) => groupColor(d.group))
-        .style("stroke", (d) => groupColor(d.group))
-        .style("opacity", RECT_OPACITY);
-      // .on("mouseover", (_, d) => {
-      //   if (d.group_leader) addTooltip(d);
-      // })
-      // .on("mouseout", (_, d) => {
-      //   if (d.group_leader) rmTooltip();
-      // });
-    }
-
-    // tail event circle
-    select("g")
-      .selectAll(".tail-event-circle")
-      .remove()
-      .data(data.tailBlocks.filter((d) => d.event))
-      .enter()
-      .append("circle")
-      .style("class", "tail-event-circle")
-      .attr("class", "leader")
-      .attr("cx", (d) => d.x + data.xShift)
-      .attr("cy", (d) => d.y + data.yShift - RECT_HEIGHT * 0.5)
-      .attr("r", (_, i) => CIRCLE_R)
-      .style("fill", (d) => groupColor(d.group))
-      .attr("stroke", (d) => "#000")
-      .style("opacity", 0.5);
-    // .on("mouseover", (_, d) => addTooltip(d))
-    // .on("mouseout", () => rmTooltip());
-
-    // draw leader label on tail line
-    if (data.tailBlocks.length > 0) {
-      let flip = false; //alternatively show label on top / down of line to avoid overlapping
-      const aheadPos = { true: [-1000], false: [-1000] };
-      let lastBlock = null;
-      select("g")
-        .selectAll(".taillabel")
-        .data(data.tailBlocks.filter((d) => d.group_start_year))
-        .enter()
-        .append("text")
-        .attr("class", "tailgroup")
-        .attr("x", (d) => (d.event ? 0 : d.x + data.xShift))
-        .attr("y", (d) => {
-          if (d.event) return 0;
-          const y = d.y + (flip ? 12 : -12);
-          const lastx = aheadPos[flip].sort().reverse()[0];
-          // console.log(Math.abs(d.x - lastx), flip, d.group);
-          flip = !flip;
-          if (Math.abs(d.x - lastx) < 50) {
-            flip = !flip;
-          }
-          aheadPos[flip].push(d.x);
-          return y + data.yShift;
-        })
-        .style("text-anchor", "start")
-        .style("font", "10px arial")
-        .text((d) => {
-          let label =
-            d.group +
-            (d.event ? "" : `(${formatYearValue(d.group_start_year)})`);
-          if (lastBlock) {
-            const dx = Math.abs(d.x - lastBlock.x);
-            // console.log(dx.toFixed(2), d.group, "[label]");
-            if (!d.event && dx < BLOCK_MIN_GAP) {
-              label = "";
-            }
-          }
-          lastBlock = d;
-          return label;
-        })
-        .attr(
-          "transform",
-          (d) => {
-            if (d.event) {
-              return `translate(${d.x + data.xShift + 4},${
-                d.y + data.yShift - 10
-              })rotate(-90)`;
-            }
-          } // rotate the text
-        );
-    }
-  };
-
   const drawScale = () => {
     if (!timeUnit) return;
+
     const x0 = -220;
     const y0 = -230;
     const h = -4;
-    const len = plotConfig.pixPerYear * yearMarkUnit();
+    const yunit = yearMarkUnit();
+    const len = plotConfig.pixPerYear * yunit;
     const data = [
       { x1: x0, y1: y0 - h, x2: x0, y2: y0 + h },
       { x1: x0, y1: y0, x2: x0 + len, y2: y0 },
@@ -948,21 +961,22 @@ const TimelineSpiral = ({
 
     const ymin = yearWindow[0]; // current year range
     const ymax = yearWindow[1];
+    // console.log(ymin, normalizeYear(-100000, true), "[drawScale.ymin]");
     const label = [
       {
         x: x0 + len * 0.5 - 14,
         y: y0 - 4,
-        text: `${yearMarkUnit()}年`,
+        text: `${normalizeYear(yunit)}`,
       },
       {
         x: x0 + 4,
         y: y0 + 12,
-        text: `${formatYearValue(ymin)} - ${formatYearValue(ymax)}`,
+        text: `${normalizeYear(ymin)} - ${normalizeYear(ymax)}`,
       },
       {
         x: x0 + 4,
         y: y0 + 24,
-        text: `[total ${ymax - ymin}]`,
+        text: `[total ${normalizeYear(ymax - ymin)}]`,
       },
     ];
 
@@ -1051,13 +1065,13 @@ const TimelineSpiral = ({
 
   const addInfo = (x, y, d) => {
     let text = d.event
-      ? `${d.group} : ${formatYearValue(d.group_start_year)}`
-      : `朝代: ${d.group}`;
+      ? `${d.group} : ${normalizeYear(d.group_start_year)}`
+      : `${d.group}`;
     if (!d.event) {
       text +=
-        `[${formatYearValue(d.group_start_year)} - ${
+        `[${normalizeYear(d.group_start_year)}${
           d.group_end_year !== undefined
-            ? ` ${formatYearValue(d.group_end_year)}`
+            ? ` - ${normalizeYear(d.group_end_year)}`
             : ""
         }]` +
         `${
@@ -1155,6 +1169,9 @@ const TimelineSpiral = ({
   // console.log(timeHead, timeButt, yearLimits, yearWindow, "[time head/butt]");
   const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
+  const debug = () => {
+    console.info(buildData(true), "DEBUG");
+  };
   // console.log(tipPosition, "[tipPosition]");
   return (
     <>
@@ -1196,11 +1213,14 @@ const TimelineSpiral = ({
           <CheckCtl label="单位" callback={setTimeUnit} checked={timeUnit} />
 
           <SelectCtl
-            label="Loops"
+            label="圈数"
             value={spiralLoop}
             valueArray={SPIRAL_LOOP_ARRAY}
             handleChange={handleSpiralLoopChange}
           />
+          <Button variant="outlined" color="error" size="small" onClick={debug}>
+            Debug
+          </Button>
           {tipPosition ? (
             <div
               style={{
