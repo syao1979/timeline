@@ -24,6 +24,7 @@ const CIRCLE_R = 6;
 const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
 const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const THIS_YEAR = new Date().getFullYear();
+const TIMEBUTT_END = [THIS_YEAR, "今年"];
 
 const TimelineSpiral = ({
   width,
@@ -104,8 +105,8 @@ const TimelineSpiral = ({
     };
 
     const singleIntValMap = {
-      th: { fn: setTimeHead, default: "" },
-      tb: { fn: setTimeButt, default: "" },
+      th: { fn: setTimeHead, default: "", current: timeHead },
+      tb: { fn: setTimeButt, default: "", current: timeButt },
     };
 
     const start_year = THIS_YEAR; // initial starting year in limeline, running backwards to past
@@ -132,10 +133,12 @@ const TimelineSpiral = ({
 
     Object.keys(singleIntValMap).forEach((kname) => {
       const fn = singleIntValMap[kname].fn;
+      const current = singleIntValMap[kname].current;
       const value = dict
         ? parseInt(dict[kname])
         : singleIntValMap[kname].default;
-      fn(value);
+      // console.log(kname, value, current, "[timeButt]");
+      if (value !== current) fn(value);
     });
 
     Object.keys(rangeMap).forEach((kname) => {
@@ -155,8 +158,10 @@ const TimelineSpiral = ({
       lookup[d.name] = { start: d.start, index: idx };
       rlookup[idx] = d.name;
     });
+    const buttArray = ordered.slice(1); //.push([THIS_YEAR, "今年"]);
+    buttArray.push(TIMEBUTT_END);
     setTimeHeadArray({ ordered, lookup, rlookup });
-    setTimeButtArray({ ordered: ordered.slice(1) });
+    setTimeButtArray({ ordered: buttArray });
   }, []);
 
   useEffect(() => {
@@ -1220,8 +1225,10 @@ const TimelineSpiral = ({
     const range = [order.start, buttObj ? buttObj.start : yearWindow[1]];
     updateURL("th", order.index);
 
+    const buttArray = timeHeadArray.ordered.slice(order.index + 1);
+    buttArray.push(TIMEBUTT_END);
     setTimeButtArray({
-      ordered: timeHeadArray.ordered.slice(order.index + 1),
+      ordered: buttArray,
     });
     updateURL("yl", rangeToURL(range));
     updateURL("yw", rangeToURL(range));
@@ -1233,18 +1240,22 @@ const TimelineSpiral = ({
     const headObj = timeHead
       ? timeHeadArray.lookup[timeHeadArray.rlookup[timeHead]]
       : null;
-    const range = [headObj ? headObj.start : yearWindow[0], order.start];
-    updateURL("tb", order.index);
-    setYearLimits(range);
-    setYearWindow(range);
+    const range = [
+      headObj ? headObj.start : yearWindow[0],
+      value === TIMEBUTT_END[1]
+        ? TIMEBUTT_END[0]
+        : order
+        ? order.start
+        : yearWindow[1],
+    ];
+    updateURL("tb", order ? order.index : null);
+    updateURL("yl", range);
+    updateURL("yw", range);
   };
   const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
   const debugFn = () => {
-    console.info(
-      plotData.yearMarks.filter((d) => !d.spiral && d.year > yearWindow[0]),
-      "DEBUG"
-    );
+    console.info(timeButtArray, "DEBUG");
   };
 
   return (
