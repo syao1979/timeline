@@ -1287,7 +1287,7 @@ const TimelineSpiral = ({
           />
           <SelectCtl
             label="终"
-            value={timeButt ? timeHeadArray.rlookup[timeButt] : ""}
+            value={timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]}
             valueArray={timeButtArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeButtChange}
             width={80}
