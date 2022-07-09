@@ -139,8 +139,8 @@ const TimelineSpiral = ({
 
     Object.keys(rangeMap).forEach((kname) => {
       const fn = rangeMap[kname].fn;
-      const value = dict ? dict[kname] : rangeMap[kname].default;
-      if (value) fn(urlToIntRange(value));
+      const value = dict ? urlToIntRange(dict[kname]) : rangeMap[kname].default;
+      fn(value);
     });
   }, [searchParams]);
 
