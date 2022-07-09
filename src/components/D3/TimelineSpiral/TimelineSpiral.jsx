@@ -125,7 +125,8 @@ const TimelineSpiral = ({
 
     Object.keys(singleStrValMap).forEach((kname) => {
       const fn = singleStrValMap[kname].fn;
-      const value = dict ? dict[kname] : singleStrValMap[kname].default;
+      const urlVal = dict ? dict[kname] : null;
+      const value = urlVal ? urlVal : singleStrValMap[kname].default;
       fn(value);
     });
 
@@ -139,7 +140,8 @@ const TimelineSpiral = ({
 
     Object.keys(rangeMap).forEach((kname) => {
       const fn = rangeMap[kname].fn;
-      const value = dict ? urlToIntRange(dict[kname]) : rangeMap[kname].default;
+      const vstr = dict ? dict[kname] : null;
+      const value = vstr ? urlToIntRange(vstr) : rangeMap[kname].default;
       fn(value);
     });
   }, [searchParams]);
