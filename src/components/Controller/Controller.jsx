@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router } from "react-router-dom";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
@@ -154,7 +155,9 @@ const Controller = () => {
       ) : displayType === "GoGantt" ? (
         <GoGantt />
       ) : displayType === "Timeline" ? (
-        <Timeline />
+        <Router>
+          <Timeline />
+        </Router>
       ) : null}
     </>
   );

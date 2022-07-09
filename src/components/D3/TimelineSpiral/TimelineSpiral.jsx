@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-// import { useHistory, useParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Button from "@mui/material/Button";
 
@@ -40,46 +40,121 @@ const TimelineSpiral = ({
   const [plotConfig, setPlotConfig] = useState(null);
   const [plotData, setPlotData] = useState(null);
   const [tipPosition, setTipPositioin] = useState(null);
-
-  const [yearLimits, setYearLimits] = useState([end_year, start_year]); // year min and max
-  const [yearWindow, setYearWindow] = useState([end_year, start_year]); // current view year range
-  const [spiralLoop, setSpiralLoops] = useState(SPIRAL_LOOP_ARRAY[1]);
   const [timeHeadArray, setTimeHeadArray] = useState({});
   const [timeHead, setTimeHead] = useState("");
   const [timeButtArray, setTimeButtArray] = useState({});
   const [timeButt, setTimeButt] = useState("");
-  const [tailOnly, _setTailOnly] = useState(false);
-  const [timeMark, _setTimeMark] = useState(false);
-  const [timeUnit, _setTimeUnit] = useState(false);
 
+  const [yearLimits, setYearLimits] = useState([end_year, start_year]); // year min and max
+  const [yearWindow, setYearWindow] = useState([end_year, start_year]); // current view year range
+  const [spiralLoop, setSpiralLoops] = useState(SPIRAL_LOOP_ARRAY[1]);
+  const [tailOnly, setTailOnly] = useState(false);
+  const [timeMark, setTimeMark] = useState(false);
+  const [timeUnit, setTimeUnit] = useState(false);
+
+  const [searchParams, _setSearchParams] = useSearchParams();
   const containerRef = useRef(null);
 
-  const setTailOnly = () => {
-    _setTailOnly(!tailOnly);
+  const searchParamData = () => {
+    const dict = {};
+    for (const entry of searchParams.entries()) {
+      const [param, value] = entry;
+      dict[param] = value;
+    }
+    return Object.keys(dict).length > 0 ? dict : null;
   };
-  const setTimeMark = () => {
-    _setTimeMark(!timeMark);
-  };
-  const setTimeUnit = () => {
-    _setTimeUnit(!timeUnit);
-  };
-  // const history = useHistory();
 
-  // useEffect(() => {
-  //   return history.listen((loc) => {
-  //     console.log(loc, "[useHistory]");
-  //   });
-  // }, [history]);
+  const rangeToURL = (range) => {
+    return `${range[0]},${range[1]}`;
+  };
+  const urlToIntRange = (value) => {
+    return value.split(",").map((d) => parseInt(d));
+  };
+
+  const updateURL = (key, value) => {
+    const param = searchParams.get(key);
+    if (param) {
+      searchParams.delete(key);
+    }
+
+    if (value) {
+      // need check if "" or 0 are valid values
+      searchParams.append(key, value);
+    }
+
+    const dict = searchParamData();
+    const kwstr = dict
+      ? `?${Object.keys(dict)
+          .map((key) => `${key}=${dict[key]}`)
+          .join("&")}`
+      : "";
+    navigate(kwstr);
+  };
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const boolMap = {
+      tail: setTailOnly,
+      mark: setTimeMark,
+      unit: setTimeUnit,
+    };
+    const singleStrValMap = {
+      loops: { fn: setSpiralLoops, default: 3 },
+    };
+
+    const singleIntValMap = {
+      th: { fn: setTimeHead, default: "" },
+      tb: { fn: setTimeButt, default: "" },
+    };
+
+    const start_year = THIS_YEAR; // initial starting year in limeline, running backwards to past
+    const end_year = THIS_YEAR - YEAR_RANGE_DEFAULT;
+    const rangeMap = {
+      yl: { fn: setYearLimits, default: [end_year, start_year] },
+      yw: { fn: setYearWindow, default: [end_year, start_year] },
+    };
+
+    const dict = searchParamData();
+
+    Object.keys(boolMap).forEach((kname) => {
+      const fn = boolMap[kname];
+      const value = dict ? dict[kname] !== undefined : false;
+      fn(value);
+    });
+
+    Object.keys(singleStrValMap).forEach((kname) => {
+      const fn = singleStrValMap[kname].fn;
+      const value = dict ? dict[kname] : singleStrValMap[kname].default;
+      fn(value);
+    });
+
+    Object.keys(singleIntValMap).forEach((kname) => {
+      const fn = singleIntValMap[kname].fn;
+      const value = dict
+        ? parseInt(dict[kname])
+        : singleIntValMap[kname].default;
+      fn(value);
+    });
+
+    Object.keys(rangeMap).forEach((kname) => {
+      const fn = rangeMap[kname].fn;
+      const value = dict ? dict[kname] : rangeMap[kname].default;
+      if (value) fn(urlToIntRange(value));
+    });
+  }, [searchParams]);
 
   useEffect(() => {
     const ordered = [];
-    const lookup = {};
+    const lookup = {}; // from name str to order index
+    const rlookup = {}; // from order index to name str
     timelineData.forEach((d, idx) => {
       ordered.push([d.start, d.name]);
       lookup[d.name] = { start: d.start, index: idx };
+      rlookup[idx] = d.name;
     });
-    setTimeHeadArray({ ordered, lookup });
-    setTimeButtArray({ ordered: ordered.slice(1), lookup });
+    setTimeHeadArray({ ordered, lookup, rlookup });
+    setTimeButtArray({ ordered: ordered.slice(1) });
   }, []);
 
   useEffect(() => {
@@ -868,7 +943,9 @@ const TimelineSpiral = ({
         });
     }
 
-    const tailMarks = data.yearMarks.filter((d) => !d.spiral);
+    const tailMarks = data.yearMarks.filter(
+      (d) => !d.spiral && d.year > yearWindow[0]
+    );
 
     if (tailMarks.length > 0) {
       let flap = false;
@@ -1118,68 +1195,56 @@ const TimelineSpiral = ({
     const dist = newValue[1] - newValue[0];
 
     const minDistance = minDist(dist);
+    let range = rangeToURL(newValue);
     if (dist < minDistance) {
       if (activeThumb === 0 && newValue[0] + minDistance <= yearWindow[1]) {
-        setYearWindow([newValue[0], newValue[0] + minDistance]);
+        range = rangeToURL([newValue[0], newValue[0] + minDistance]);
       } else if (newValue[1] - minDistance >= yearWindow[0]) {
-        setYearWindow([newValue[1] - minDistance, newValue[1]]);
+        range = rangeToURL([newValue[1] - minDistance, newValue[1]]);
       }
-    } else {
-      setYearWindow(newValue);
     }
-  };
-
-  const handleSpiralLoopChange = (e) => {
-    setSpiralLoops(e.target.value);
+    updateURL("yw", range);
   };
 
   const handleTimeHeadChange = (e) => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
-    // console.log(
-    //   value,
-    //   timeButt,
-    //   timeHeadArray.lookup,
-    //   "[handleTimeHeadChange]"
-    // );
-    if (timeButt && order.index >= timeHeadArray.lookup[timeButt].index) return; // range zero or crossed
 
-    const range = [
-      order.start,
-      timeButt ? timeHeadArray.lookup[timeButt].start : yearWindow[1],
-    ];
-    setTimeHead(value);
+    const buttObj = timeButt
+      ? timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]]
+      : null;
+    if (buttObj && order.index >= buttObj.index) return; // range zero or crossed
+
+    const range = [order.start, buttObj ? buttObj.start : yearWindow[1]];
+    updateURL("th", order.index);
 
     setTimeButtArray({
       ordered: timeHeadArray.ordered.slice(order.index + 1),
-      lookup: timeHeadArray.lookup,
     });
-    setYearLimits(range);
-    setYearWindow(range);
+    updateURL("yl", rangeToURL(range));
+    updateURL("yw", rangeToURL(range));
   };
 
   const handleTimeButtChange = (e) => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
-    const range = [
-      timeHead ? timeHeadArray.lookup[timeHead].start : yearWindow[0],
-      order.start,
-    ];
-    setTimeButt(value);
+    const headObj = timeHead
+      ? timeHeadArray.lookup[timeHeadArray.rlookup[timeHead]]
+      : null;
+    const range = [headObj ? headObj.start : yearWindow[0], order.start];
+    updateURL("tb", order.index);
     setYearLimits(range);
     setYearWindow(range);
   };
-  // console.log(timeHead, timeButt, yearLimits, yearWindow, "[time head/butt]");
   const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
-  const debug = () => {
-    const scale = d3
-      .scaleLinear()
-      .domain([1378, 2022]) // tail year range
-      .range([0, 1000]); // tail pixel range
-    console.info(scale(1368), "DEBUG");
+  const debugFn = () => {
+    console.info(
+      plotData.yearMarks.filter((d) => !d.spiral && d.year > yearWindow[0]),
+      "DEBUG"
+    );
   };
-  // console.log(tipPosition, "[tipPosition]");
+
   return (
     <>
       <div id="timeline" style={{ border: "solid 1px #666" }}>
@@ -1201,33 +1266,50 @@ const TimelineSpiral = ({
           />
 
           <SelectCtl
-            label="头"
-            value={timeHead}
+            label="始"
+            value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
             valueArray={timeHeadArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeHeadChange}
             width={80}
           />
           <SelectCtl
-            label="尾"
-            value={timeButt}
+            label="终"
+            value={timeButt ? timeHeadArray.rlookup[timeButt] : ""}
             valueArray={timeButtArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeButtChange}
             width={80}
           />
-
-          <CheckCtl label="直线" callback={setTailOnly} checked={tailOnly} />
-          <CheckCtl label="时标" callback={setTimeMark} checked={timeMark} />
-          <CheckCtl label="单位" callback={setTimeUnit} checked={timeUnit} />
-
+          <CheckCtl
+            label="直线"
+            callback={() => updateURL("tail", !tailOnly)}
+            checked={tailOnly}
+          />
+          <CheckCtl
+            label="时标"
+            callback={() => updateURL("mark", !timeMark)}
+            checked={timeMark}
+          />
+          <CheckCtl
+            label="单位"
+            callback={() => updateURL("unit", !timeUnit)}
+            checked={timeUnit}
+          />
           <SelectCtl
             label="圈数"
             value={spiralLoop}
             valueArray={SPIRAL_LOOP_ARRAY}
-            handleChange={handleSpiralLoopChange}
+            handleChange={(e) => updateURL("loops", e.target.value)}
           />
-          {/* <Button variant="outlined" color="error" size="small" onClick={debug}>
-            Debug
-          </Button> */}
+          {process.env.NODE_ENV === "development" ? (
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={debugFn}
+            >
+              Debug
+            </Button>
+          ) : null}
           {tipPosition ? (
             <div
               style={{

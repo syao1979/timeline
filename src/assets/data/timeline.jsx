@@ -209,7 +209,7 @@ const timeline = [
     ],
   },
   {
-    name: "炎黄尧舜禹",
+    name: "黄帝",
     start: -2697, // 黄帝元年
     end: -2070,
     format: "炎帝,黄帝,尧,舜,禹",
