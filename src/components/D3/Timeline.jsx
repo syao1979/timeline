@@ -32,7 +32,7 @@ const Timeline = () => {
 
   const debug = false;
   return (
-    <div style={{ paddingLeft: 20 }}>
+    <div id="timeline" style={{ margin: 10 }}>
       <Spiral {...spiralConf} />
     </div>
   );

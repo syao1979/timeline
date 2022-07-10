@@ -2,7 +2,7 @@ const timeline = [
   {
     name: "宇宙之始",
     start: -13800000000,
-    end: -2400000,
+    // end: -2400000,
     events: [
       {
         name: "第一代恒星",

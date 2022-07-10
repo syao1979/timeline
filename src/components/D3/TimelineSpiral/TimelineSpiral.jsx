@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import Button from "@mui/material/Button";
+import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
 
 import * as d3 from "d3";
 import { select } from "d3";
@@ -10,10 +12,12 @@ import timelineData from "../../../assets/data/timeline";
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
 import CheckCtl from "../../Controls/CheckCtl";
+import MoreMenu from "../../Controls/MoreMenu";
 
 import { normalizeYear, cleanNameString } from "../../../utils/Formatter";
 
-const TAIL_LEN_IN_PIXEL = 1000;
+const SPIRAL_R = 250;
+const TAIL_GAP = 50;
 const YEAR_RANGE_DEFAULT = 5000;
 const RECT_OPACITY = 0.6;
 const BLOCK_MIN_GAP = 28;
@@ -25,15 +29,10 @@ const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes
 const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const THIS_YEAR = new Date().getFullYear();
 const TIMEBUTT_END = [THIS_YEAR, "今年"];
+const ROTATE = false;
 
-const TimelineSpiral = ({
-  width,
-  height,
-  m_top,
-  m_bottom,
-  m_left,
-  m_right,
-}) => {
+const TimelineSpiral = () => {
+  // let ZOOMER = null;
   const start_year = THIS_YEAR; // initial starting year in limeline, running backwards to past
   const end_year = THIS_YEAR - YEAR_RANGE_DEFAULT;
 
@@ -46,6 +45,11 @@ const TimelineSpiral = ({
   const [timeButtArray, setTimeButtArray] = useState({});
   const [timeButt, setTimeButt] = useState("");
 
+  const [winSize, setWinSize] = useState({
+    width: 500,
+    height: 500,
+    shift: 250, // for shifting spiral center to this x,y so all visible
+  });
   const [yearLimits, setYearLimits] = useState([end_year, start_year]); // year min and max
   const [yearWindow, setYearWindow] = useState([end_year, start_year]); // current view year range
   const [spiralLoop, setSpiralLoops] = useState(SPIRAL_LOOP_ARRAY[1]);
@@ -54,7 +58,12 @@ const TimelineSpiral = ({
   const [timeUnit, setTimeUnit] = useState(false);
 
   const [searchParams, _setSearchParams] = useSearchParams();
+  const [portrait, setPortrait] = useState(false);
   const containerRef = useRef(null);
+
+  const tailLength = () => {
+    return winSize.width - winSize.shift - TAIL_GAP;
+  };
 
   const searchParamData = () => {
     const dict = {};
@@ -65,6 +74,14 @@ const TimelineSpiral = ({
     return Object.keys(dict).length > 0 ? dict : null;
   };
 
+  const searchParamDataSize = () => {
+    let size = 0;
+    for (const entry of searchParams.entries()) {
+      size++;
+    }
+    return size;
+  };
+
   const rangeToURL = (range) => {
     return `${range[0]},${range[1]}`;
   };
@@ -72,7 +89,22 @@ const TimelineSpiral = ({
     return value.split(",").map((d) => parseInt(d));
   };
 
-  const updateURL = (key, value) => {
+  // const location = useLocation();
+
+  const refresh = (param) => {
+    // console.log(window.location.host, param, "[refresh]");
+    //- need to reset zoom but can't save the zoom object from zoom init;
+    //- use redirect instead;
+    // const loc = window.location;
+    // window.location.href = `${loc.protocol}//${loc.host}/${param}`;
+    navigate(param);
+  };
+  const updateURL = (key = null, value = null) => {
+    if (!key) {
+      refresh("");
+      return;
+    }
+
     const param = searchParams.get(key);
     if (param) {
       searchParams.delete(key);
@@ -89,7 +121,7 @@ const TimelineSpiral = ({
           .map((key) => `${key}=${dict[key]}`)
           .join("&")}`
       : "";
-    navigate(kwstr);
+    refresh(kwstr);
   };
 
   const navigate = useNavigate();
@@ -149,6 +181,31 @@ const TimelineSpiral = ({
     });
   }, [searchParams]);
 
+  // let resetZoomCallBack = null;
+  const initZoom = () => {
+    // install zoom/pan handler: ref https://www.d3indepth.com/zoom-and-pan/
+    const zoom = d3
+      .zoom()
+      .scaleExtent([0.5, 4]) // do not zoom too small or too large
+      // .translateExtent([
+      //   [-winSize.shift, -winSize.shift],
+      //   [400, 400],
+      // ])
+      .on("zoom", zoomHandler)
+      .on("start", function (e) {
+        // buttons === 1 when 3 finger down (for zooming)
+        select("svg").style(
+          "cursor",
+          e.sourceEvent.buttons === 1 ? "move" : "nesw-resize"
+        );
+      })
+      .on("end", function (e) {
+        select("svg").style("cursor", "default");
+      });
+
+    select("svg").call(zoom);
+  };
+
   useEffect(() => {
     const ordered = [];
     const lookup = {}; // from name str to order index
@@ -162,11 +219,26 @@ const TimelineSpiral = ({
     buttArray.push(TIMEBUTT_END);
     setTimeHeadArray({ ordered, lookup, rlookup });
     setTimeButtArray({ ordered: buttArray });
+
+    initZoom();
+
+    // window resize listener
+    const handleResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const shift = 0.5 * Math.min(window.innerWidth, window.innerHeight);
+      setWinSize({ width, height, shift });
+      setPortrait(width / height < 0.8);
+
+      // console.log((width / height).toFixed(2), "[handleResize]");
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
     const theta = (r) => spiralLoop * Math.PI * r;
-    const outerR = d3.min([width, height]) / 2 - 40; // spiral outer radius
+    const outerR = SPIRAL_R - 40; //d3.min([width, height]) / 2 - 40; // spiral outer radius
     const radius = d3
       .scaleLinear()
       .domain([SPIRAL_START, SPIRAL_END])
@@ -188,7 +260,7 @@ const TimelineSpiral = ({
 
   useEffect(() => {
     updatePlotConfig();
-  }, [spiralConfig, yearWindow, tailOnly]);
+  }, [spiralConfig, yearWindow, tailOnly, winSize]);
 
   useEffect(() => {
     if (plotData) {
@@ -199,6 +271,16 @@ const TimelineSpiral = ({
     if (!spiralConfig) return;
 
     select("g").selectAll("*").remove(); // clear all elements - for redraw
+    // select("g").attr("transform", `translate(${SPIRAL_R}, ${SPIRAL_R})`);
+    select("g").attr(
+      "transform",
+      `rotate(${ROTATE && portrait ? 90 : 0}) translate(${SPIRAL_R}, ${
+        ROTATE && portrait ? -SPIRAL_R : SPIRAL_R
+      })`
+    );
+    select("svg")
+      .style("width", SPIRAL_R + tailLength() + TAIL_GAP)
+      .style("height", SPIRAL_R * 2);
 
     let spiralLen = 0;
     let path = null;
@@ -214,9 +296,7 @@ const TimelineSpiral = ({
       spiralLen = path.node().getTotalLength();
     }
 
-    const tailLen = tailOnly
-      ? width * 0.5 + 50 + TAIL_LEN_IN_PIXEL
-      : TAIL_LEN_IN_PIXEL;
+    const tailLen = tailOnly ? SPIRAL_R + tailLength() : tailLength();
     const partition = partitionYear(
       yearWindow[1] - yearWindow[0],
       spiralLen,
@@ -254,6 +334,14 @@ const TimelineSpiral = ({
       repaint();
     }
   }, [timeUnit, timeMark]);
+
+  // useEffect(() => {
+  //   if (containerRef.current) {
+  //     const { current } = containerRef;
+  //     const boundingRect = current.getBoundingClientRect();
+  //     const { width, height } = boundingRect;
+  //   }
+  // }, [containerRef]);
 
   const repaint = () => {
     select("g").selectAll("*").remove(); // clear all elements - for redraw
@@ -571,7 +659,7 @@ const TimelineSpiral = ({
       yearMarks: buildYearMarks(),
       sYearMax,
       sYearMin: yearWindow[0],
-      xShift: tailOnly ? -(width * 0.5 - 20) : 0,
+      xShift: tailOnly ? -(SPIRAL_R - 20) : 0,
       yShift: tailOnly ? 50 : 0,
     };
   };
@@ -707,7 +795,7 @@ const TimelineSpiral = ({
         .style("opacity", RECT_OPACITY)
         .attr(
           "transform",
-          (d) => "rotate(" + d.a + "," + d.x + "," + d.y + ")" // rotate the bar
+          (d) => `rotate(${d.a}, ${d.x}, ${d.y})` // rotate the bar
         );
 
       // draw spiral event circle
@@ -886,7 +974,7 @@ const TimelineSpiral = ({
             if (d.event) {
               return `translate(${d.x + data.xShift + 4},${
                 d.y + data.yShift - 10
-              })rotate(-90)`;
+              }) rotate(-90)`;
             }
           } // rotate the text
         );
@@ -1170,14 +1258,16 @@ const TimelineSpiral = ({
 
     setTipPositioin([x, y, text, d.event ? groupColor(d.group) : "#000"]);
   };
+
   const drawTips = () => {
     select("g")
       .selectAll(".leader")
-      .on("mouseover", (event, d) => {
+      .on("mouseover", function (event, d) {
+        select(this).style("cursor", "help"); // "context-menu");
         addInfo(event.pageY, event.pageX, d);
       })
-      .on("mouseout", () => {
-        // console.log("out");
+      .on("mouseout", function () {
+        select(this).style("cursor", "default");
         setTipPositioin(null);
       });
   };
@@ -1194,6 +1284,16 @@ const TimelineSpiral = ({
   };
 
   //-- event handlers
+  function zoomHandler(e) {
+    d3.select("svg g").attr(
+      "transform",
+      // `${e.transform} translate(${SPIRAL_R}, ${SPIRAL_R})`
+      `${e.transform} rotate(${
+        ROTATE && portrait ? 90 : 0
+      }) translate(${SPIRAL_R}, ${ROTATE && portrait ? -SPIRAL_R : SPIRAL_R})`
+    );
+  }
+
   const handleYearRangeChange = (_event, newValue, activeThumb) => {
     // activeThumb: 0->left; 1->right
     if (!Array.isArray(newValue)) {
@@ -1252,95 +1352,207 @@ const TimelineSpiral = ({
     updateURL("yl", range);
     updateURL("yw", range);
   };
-  const control = spiralConfig && Object.keys(timeHeadArray).length > 0;
-
-  const debugFn = () => {
-    console.info(timeButtArray, "DEBUG");
+  const handleReset = () => {
+    updateURL();
   };
 
-  return (
-    <>
-      <div id="timeline" style={{ border: "solid 1px #666" }}>
-        {spiralConfig ? null : "Loading..."}
-        <svg
-          width={width + m_right + m_left + TAIL_LEN_IN_PIXEL}
-          height={height + m_top + m_bottom}
-          ref={containerRef}
-        >
-          <g transform={`translate(${width / 2}, ${height / 2})`} />
-        </svg>
-      </div>
-      {control ? (
-        <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
+  const showControls = spiralConfig && Object.keys(timeHeadArray).length > 0;
+
+  const debugFn = () => {
+    // const svg = select("svg");
+    // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
+    console.info(portrait, "debugFn");
+  };
+  // console.info(ZOOMER, "[DEBUG] render");
+  const controls = showControls ? (
+    portrait ? (
+      <MoreMenu
+        children={[
           <RangeCtl
+            key="range-ctl"
             limits={yearLimits}
             value={yearWindow}
             handleChange={handleYearRangeChange}
-          />
-
+            width={150}
+          />,
           <SelectCtl
+            key="select-ctl-start"
             label="始"
             value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
             valueArray={timeHeadArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeHeadChange}
             width={80}
-          />
+          />,
           <SelectCtl
+            key="select-ctl-end"
             label="终"
             value={timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]}
             valueArray={timeButtArray.ordered?.map((d) => d[1])}
             handleChange={handleTimeButtChange}
             width={80}
-          />
-          <CheckCtl
-            label="直线"
-            callback={() => updateURL("tail", !tailOnly)}
-            checked={tailOnly}
-          />
-          <CheckCtl
-            label="时标"
-            callback={() => updateURL("mark", !timeMark)}
-            checked={timeMark}
-          />
-          <CheckCtl
-            label="单位"
-            callback={() => updateURL("unit", !timeUnit)}
-            checked={timeUnit}
-          />
+          />,
           <SelectCtl
+            key="select-ctl-loop"
             label="圈数"
             value={spiralLoop}
             valueArray={SPIRAL_LOOP_ARRAY}
             handleChange={(e) => updateURL("loops", e.target.value)}
-          />
-          {process.env.NODE_ENV === "development" ? (
+          />,
+          <CheckCtl
+            key="check-ctl-line"
+            label="直线"
+            callback={() => updateURL("tail", !tailOnly)}
+            checked={tailOnly}
+          />,
+          <CheckCtl
+            key="check-ctl-mark"
+            label="时标"
+            callback={() => updateURL("mark", !timeMark)}
+            checked={timeMark}
+          />,
+          <CheckCtl
+            key="check-ctl-scale"
+            label="单位"
+            callback={() => updateURL("unit", !timeUnit)}
+            checked={timeUnit}
+          />,
+          <Button
+            key="button-ctl-reset"
+            variant="contained"
+            color="primary"
+            size="small"
+            onClick={handleReset}
+            disabled={searchParamDataSize() === 0}
+            style={{ width: 100 }}
+          >
+            Reset
+          </Button>,
+        ]}
+      />
+    ) : (
+      <Box sx={{ flexGrow: 1 }}>
+        <Grid container spacing={2}>
+          <Grid item xs={2}>
+            <RangeCtl
+              limits={yearLimits}
+              value={yearWindow}
+              handleChange={handleYearRangeChange}
+              width={150}
+            />
+          </Grid>
+          <Grid item xs={1}>
+            <SelectCtl
+              label="始"
+              value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
+              valueArray={timeHeadArray.ordered?.map((d) => d[1])}
+              handleChange={handleTimeHeadChange}
+              width={80}
+            />
+          </Grid>
+          <Grid item xs={1}>
+            <SelectCtl
+              label="终"
+              value={
+                timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]
+              }
+              valueArray={timeButtArray.ordered?.map((d) => d[1])}
+              handleChange={handleTimeButtChange}
+              width={80}
+            />
+          </Grid>
+          <Grid item xs={2}>
+            <SelectCtl
+              label="圈数"
+              value={spiralLoop}
+              valueArray={SPIRAL_LOOP_ARRAY}
+              handleChange={(e) => updateURL("loops", e.target.value)}
+            />
+          </Grid>
+          <Grid item xs={2}>
+            <Grid container spacing={1}>
+              <Grid item xs={4}>
+                {" "}
+                <CheckCtl
+                  label="直线"
+                  callback={() => updateURL("tail", !tailOnly)}
+                  checked={tailOnly}
+                />{" "}
+              </Grid>
+              <Grid item xs={4}>
+                {" "}
+                <CheckCtl
+                  label="时标"
+                  callback={() => updateURL("mark", !timeMark)}
+                  checked={timeMark}
+                />
+              </Grid>
+              <Grid item xs={4}>
+                <CheckCtl
+                  label="单位"
+                  callback={() => updateURL("unit", !timeUnit)}
+                  checked={timeUnit}
+                />{" "}
+              </Grid>
+            </Grid>
+          </Grid>
+
+          <Grid item xs={1}>
             <Button
-              variant="outlined"
-              color="error"
+              variant="contained"
+              color="primary"
               size="small"
-              onClick={debugFn}
+              onClick={handleReset}
+              disabled={searchParamDataSize() === 0}
             >
-              Debug
+              Reset
             </Button>
-          ) : null}
-          {tipPosition ? (
-            <div
-              style={{
-                position: "absolute",
-                border: "solid 1px #000",
-                font: "10px arial",
-                padding: 10,
-                backgroundColor: "#eee",
-                color: tipPosition[3],
-                borderRadius: 4,
-                zIndex: 100,
-                top: tipPosition[0],
-                left: tipPosition[1],
-              }}
-            >
-              {tipPosition[2]}
-            </div>
-          ) : null}
+          </Grid>
+          <Grid item xs={1}>
+            {process.env.NODE_ENV === "development" ? (
+              <Button
+                variant="outlined"
+                color="error"
+                size="small"
+                onClick={debugFn}
+                style={{ marginLeft: 40 }}
+              >
+                Debug
+              </Button>
+            ) : null}
+          </Grid>
+        </Grid>
+      </Box>
+    )
+  ) : null;
+  return (
+    <>
+      <div id="timeline-plot" style={{ borderBottom: "solid 1px #eee" }}>
+        {spiralConfig ? null : "Loading..."}
+        <svg id="gcontainer" ref={containerRef}>
+          <g />
+        </svg>
+      </div>
+
+      <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
+        {controls}
+      </div>
+
+      {tipPosition ? (
+        <div
+          style={{
+            position: "absolute",
+            border: "solid 1px #000",
+            font: "10px arial",
+            padding: 10,
+            backgroundColor: "#eee",
+            color: tipPosition[3],
+            borderRadius: 4,
+            zIndex: 100,
+            top: tipPosition[0],
+            left: tipPosition[1],
+          }}
+        >
+          {tipPosition[2]}
         </div>
       ) : null}
     </>
