@@ -92,12 +92,12 @@ const TimelineSpiral = () => {
   // const location = useLocation();
 
   const refresh = (param) => {
-    // console.log(window.location.host, param, "[refresh]");
     //- need to reset zoom but can't save the zoom object from zoom init;
     //- use redirect instead;
-    // const loc = window.location;
-    // window.location.href = `${loc.protocol}//${loc.host}/${param}`;
-    navigate(param);
+    const loc = window.location;
+    console.log(loc.host, param, loc.pathname, "[refresh]");
+    window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
+    // navigate(param);
   };
   const updateURL = (key = null, value = null) => {
     if (!key) {
