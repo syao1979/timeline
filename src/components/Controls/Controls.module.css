@@ -4,3 +4,20 @@
   left: 14px;
   z-index: 200px;
 }
+
+.Menu:hover {
+  opacity: 0.6;
+}
+
+.AvertaIcon {
+  width: 24;
+  height: 24;
+  color: "#1974D2";
+}
+
+.Averta {
+  background-color: "#1974D2";
+}
+.Averta:hover {
+  background-color: "#16E2F5";
+}

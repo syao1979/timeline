@@ -11,8 +11,13 @@ import { select } from "d3";
 import timelineData from "../../../assets/data/timeline";
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
-import CheckCtl from "../../Controls/CheckCtl";
 import MoreMenu from "../../Controls/MoreMenu";
+import AvertaCtl, {
+  TYPE_SPIRAL,
+  TYPE_MARK,
+  TYPE_SCALE,
+  TYPE_RESET,
+} from "../../Controls/AvertarCtl";
 
 import { normalizeYear, cleanNameString } from "../../../utils/Formatter";
 
@@ -30,6 +35,7 @@ const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const THIS_YEAR = new Date().getFullYear();
 const TIMEBUTT_END = [THIS_YEAR, "今年"];
 const ROTATE = false;
+const LINE_SIZE = 1;
 
 const TimelineSpiral = () => {
   // let ZOOMER = null;
@@ -95,7 +101,7 @@ const TimelineSpiral = () => {
     //- need to reset zoom but can't save the zoom object from zoom init;
     //- use redirect instead;
     const loc = window.location;
-    console.log(loc.host, param, loc.pathname, "[refresh]");
+    // console.log(loc.host, param, loc.pathname, "[refresh]");
     window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
     // navigate(param);
   };
@@ -360,6 +366,7 @@ const TimelineSpiral = () => {
         .attr("id", "spiral")
         .attr("d", spiralConfig.spiral)
         .style("fill", "none")
+        .attr("stroke-width", LINE_SIZE)
         .style("stroke", "steelblue");
     }
     drawSpiralGroup();
@@ -791,7 +798,7 @@ const TimelineSpiral = () => {
         .attr("class", "leader")
         .attr("height", (d) => 8) // const bar height
         .style("fill", (d) => groupColor(d.group))
-        .style("stroke", "stroke", "none")
+        .style("stroke", "none")
         .style("opacity", RECT_OPACITY)
         .attr(
           "transform",
@@ -1097,7 +1104,7 @@ const TimelineSpiral = () => {
       .append("line")
       .style("class", "tail-line")
       .style("stroke", "steelblue")
-      .style("stroke-width", 1)
+      .attr("stroke-width", LINE_SIZE)
       .attr("x1", data.tailX + +data.xShift)
       .attr("y1", data.tailY + data.yShift)
       .attr("x2", tailLen + +data.xShift)
@@ -1364,149 +1371,132 @@ const TimelineSpiral = () => {
     console.info(portrait, "debugFn");
   };
   // console.info(ZOOMER, "[DEBUG] render");
+
+  const spiralCtl = (
+    <AvertaCtl
+      key="spiral-ctl"
+      type={TYPE_SPIRAL}
+      label="螺线"
+      callback={() => updateURL("tail", !tailOnly)}
+      checked={!tailOnly}
+    />
+  );
+  const markCtl = (
+    <AvertaCtl
+      key="mark-ctl"
+      type={TYPE_MARK}
+      label="时标"
+      callback={() => updateURL("mark", !timeMark)}
+      checked={timeMark}
+    />
+  );
+  const scaleCtl = (
+    <AvertaCtl
+      type={TYPE_SCALE}
+      key="scale-ctl"
+      label="单位"
+      callback={() => updateURL("unit", !timeUnit)}
+      checked={timeUnit}
+    />
+  );
+  const loopCtl = (
+    <SelectCtl
+      key="select-ctl-loop"
+      label="圈数"
+      value={spiralLoop}
+      valueArray={SPIRAL_LOOP_ARRAY}
+      handleChange={(e) => updateURL("loops", e.target.value)}
+    />
+  );
+  const loopCmp = tailOnly ? null : (
+    <Grid item xs={1}>
+      {loopCtl}
+    </Grid>
+  );
+  const resetBtn = (
+    <AvertaCtl
+      type={TYPE_RESET}
+      key="reset-ctl"
+      label="复原"
+      callback={handleReset}
+      checked={true}
+    />
+  );
+
+  const yRangeCtl = (
+    <RangeCtl
+      key="range-ctl"
+      limits={yearLimits}
+      value={yearWindow}
+      handleChange={handleYearRangeChange}
+      width={150}
+    />
+  );
+
+  const yStartCtl = (
+    <SelectCtl
+      key="select-ctl-start"
+      label="起始"
+      value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
+      valueArray={timeHeadArray.ordered?.map((d) => d[1])}
+      handleChange={handleTimeHeadChange}
+      width={80}
+    />
+  );
+
+  const yEndCtl = (
+    <SelectCtl
+      key="select-ctl-end"
+      label="终结"
+      value={timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]}
+      valueArray={timeButtArray.ordered?.map((d) => d[1])}
+      handleChange={handleTimeButtChange}
+      width={80}
+    />
+  );
+
   const controls = showControls ? (
     portrait ? (
       <MoreMenu
         children={[
-          <RangeCtl
-            key="range-ctl"
-            limits={yearLimits}
-            value={yearWindow}
-            handleChange={handleYearRangeChange}
-            width={150}
-          />,
-          <SelectCtl
-            key="select-ctl-start"
-            label="始"
-            value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
-            valueArray={timeHeadArray.ordered?.map((d) => d[1])}
-            handleChange={handleTimeHeadChange}
-            width={80}
-          />,
-          <SelectCtl
-            key="select-ctl-end"
-            label="终"
-            value={timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]}
-            valueArray={timeButtArray.ordered?.map((d) => d[1])}
-            handleChange={handleTimeButtChange}
-            width={80}
-          />,
-          <SelectCtl
-            key="select-ctl-loop"
-            label="圈数"
-            value={spiralLoop}
-            valueArray={SPIRAL_LOOP_ARRAY}
-            handleChange={(e) => updateURL("loops", e.target.value)}
-          />,
-          <CheckCtl
-            key="check-ctl-line"
-            label="直线"
-            callback={() => updateURL("tail", !tailOnly)}
-            checked={tailOnly}
-          />,
-          <CheckCtl
-            key="check-ctl-mark"
-            label="时标"
-            callback={() => updateURL("mark", !timeMark)}
-            checked={timeMark}
-          />,
-          <CheckCtl
-            key="check-ctl-scale"
-            label="单位"
-            callback={() => updateURL("unit", !timeUnit)}
-            checked={timeUnit}
-          />,
-          <Button
-            key="button-ctl-reset"
-            variant="contained"
-            color="primary"
-            size="small"
-            onClick={handleReset}
-            disabled={searchParamDataSize() === 0}
-            style={{ width: 100 }}
-          >
-            Reset
-          </Button>,
-        ]}
+          yRangeCtl,
+          yStartCtl,
+          yEndCtl,
+          tailOnly ? null : loopCtl,
+          [spiralCtl, markCtl, scaleCtl, resetBtn],
+        ].filter((d) => d !== null)}
       />
     ) : (
       <Box sx={{ flexGrow: 1 }}>
         <Grid container spacing={2}>
           <Grid item xs={2}>
-            <RangeCtl
-              limits={yearLimits}
-              value={yearWindow}
-              handleChange={handleYearRangeChange}
-              width={150}
-            />
-          </Grid>
-          <Grid item xs={1}>
-            <SelectCtl
-              label="始"
-              value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
-              valueArray={timeHeadArray.ordered?.map((d) => d[1])}
-              handleChange={handleTimeHeadChange}
-              width={80}
-            />
-          </Grid>
-          <Grid item xs={1}>
-            <SelectCtl
-              label="终"
-              value={
-                timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]
-              }
-              valueArray={timeButtArray.ordered?.map((d) => d[1])}
-              handleChange={handleTimeButtChange}
-              width={80}
-            />
-          </Grid>
-          <Grid item xs={2}>
-            <SelectCtl
-              label="圈数"
-              value={spiralLoop}
-              valueArray={SPIRAL_LOOP_ARRAY}
-              handleChange={(e) => updateURL("loops", e.target.value)}
-            />
-          </Grid>
-          <Grid item xs={2}>
             <Grid container spacing={1}>
-              <Grid item xs={4}>
-                {" "}
-                <CheckCtl
-                  label="直线"
-                  callback={() => updateURL("tail", !tailOnly)}
-                  checked={tailOnly}
-                />{" "}
+              <Grid item xs={3}>
+                {spiralCtl}
               </Grid>
-              <Grid item xs={4}>
-                {" "}
-                <CheckCtl
-                  label="时标"
-                  callback={() => updateURL("mark", !timeMark)}
-                  checked={timeMark}
-                />
+              <Grid item xs={3}>
+                {markCtl}
               </Grid>
-              <Grid item xs={4}>
-                <CheckCtl
-                  label="单位"
-                  callback={() => updateURL("unit", !timeUnit)}
-                  checked={timeUnit}
-                />{" "}
+              <Grid item xs={3}>
+                {scaleCtl}
+              </Grid>
+              <Grid item xs={3}>
+                {resetBtn}
               </Grid>
             </Grid>
           </Grid>
-
-          <Grid item xs={1}>
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={handleReset}
-              disabled={searchParamDataSize() === 0}
-            >
-              Reset
-            </Button>
+          <Grid item xs={2}>
+            {yRangeCtl}
           </Grid>
+          <Grid item xs={1}>
+            {yStartCtl}
+          </Grid>
+          <Grid item xs={1}>
+            {yEndCtl}
+          </Grid>
+          {loopCmp}
+
+          <Grid item xs={1}></Grid>
           <Grid item xs={1}>
             {process.env.NODE_ENV === "development" ? (
               <Button
@@ -1532,7 +1522,6 @@ const TimelineSpiral = () => {
           <g />
         </svg>
       </div>
-
       <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
         {controls}
       </div>

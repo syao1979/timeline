@@ -9,11 +9,8 @@ const TimelineRange = ({
   limits, // min and max of the range
   value, // current value
   handleChange,
-  width = 300,
-  marginTop = 25,
 }) => {
   return (
-    // <Box sx={{ width }} style={{ marginTop, marginLeft: 20 }}>
     <Slider
       min={limits[0]}
       max={limits[1]}
@@ -24,8 +21,8 @@ const TimelineRange = ({
       // valueLabelDisplay="on"
       size="small"
       valueLabelFormat={(value) => <div>{normalizeYear(value)}</div>}
+      style={{ marginTop: 16 }}
     />
-    // </Box>
   );
 };
 

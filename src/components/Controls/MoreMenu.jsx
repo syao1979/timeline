@@ -40,6 +40,7 @@ const MoreMenu = ({ children }) => {
           vertical: "top",
           horizontal: "left",
         }}
+        className={classes.Menu}
       >
         {children?.map((d, idx) => {
           return (
