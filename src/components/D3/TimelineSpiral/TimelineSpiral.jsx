@@ -8,6 +8,8 @@ import Box from "@mui/material/Box";
 import * as d3 from "d3";
 import { select } from "d3";
 
+import { isMobile } from "react-device-detect";
+
 import timelineData from "../../../assets/data/timeline";
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
@@ -1456,7 +1458,7 @@ const TimelineSpiral = () => {
   );
 
   const controls = showControls ? (
-    portrait ? (
+    portrait || isMobile ? (
       <MoreMenu
         children={[
           yRangeCtl,
