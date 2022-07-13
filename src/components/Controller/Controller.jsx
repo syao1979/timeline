@@ -5,7 +5,7 @@ import MenuItem from "@mui/material/MenuItem";
 import FormControl from "@mui/material/FormControl";
 import Select from "@mui/material/Select";
 
-import database from "../../assets/data/people";
+import database from "../../assets/data/monarch";
 import info from "../../assets/data/info";
 import refs from "../../assets/data/ref";
 import OrgChart from "../GOJS/OrgChart/OrgChart";

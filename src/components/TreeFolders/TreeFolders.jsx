@@ -9,7 +9,7 @@ import Collapse from "@mui/material/Collapse";
 // web.cjs is required for IE11 support
 import { useSpring, animated } from "react-spring";
 
-import database from "../../assets/data/people";
+import database from "../../assets/data/monarch";
 
 function MinusSquare(props) {
   return (
@@ -42,7 +42,7 @@ function CloseSquare(props) {
   );
 }
 
-const TransitionComponent = props => {
+const TransitionComponent = (props) => {
   const style = useSpring({
     from: {
       opacity: 0,
@@ -67,7 +67,7 @@ TransitionComponent.propTypes = {
   in: PropTypes.bool,
 };
 
-const StyledTreeItem = styled(props => (
+const StyledTreeItem = styled((props) => (
   <TreeItem {...props} TransitionComponent={TransitionComponent} />
 ))(({ theme }) => ({
   [`& .${treeItemClasses.iconContainer}`]: {
@@ -111,19 +111,19 @@ const data = [
   },
 ];
 
-const parseDatabase = db => {
+const parseDatabase = (db) => {
   if (!db) return;
 
   let cnt = 0;
 
   const table = {};
   // let head = null;
-  Object.keys(db).forEach(kname => {
+  Object.keys(db).forEach((kname) => {
     cnt++;
     const father = {};
     // if (cnt === 1) head = kname;
     table[kname] = { label: kname, id: cnt, branch: [] };
-    db[kname].forEach(row => {
+    db[kname].forEach((row) => {
       cnt++;
       const item = { label: row.name, id: cnt, branch: [] };
       father[row.name] = item; // every one can be father of others
@@ -136,7 +136,7 @@ const parseDatabase = db => {
   });
 
   //console.log(JSON.stringify(table));
-  return Object.keys(table).map(kname => table[kname]);
+  return Object.keys(table).map((kname) => table[kname]);
 };
 
 const CustomizedTreeView = () => {
@@ -145,8 +145,8 @@ const CustomizedTreeView = () => {
     setTreeData(parseDatabase(database));
   }, []);
 
-  const buildTree = branch =>
-    branch.map(itm => (
+  const buildTree = (branch) =>
+    branch.map((itm) => (
       <StyledTreeItem key={`${itm.id}`} nodeId={`${itm.id}`} label={itm.label}>
         {itm.branch?.length > 0 ? buildTree(itm.branch) : null}
       </StyledTreeItem>

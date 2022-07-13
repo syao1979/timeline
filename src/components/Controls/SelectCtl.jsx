@@ -23,7 +23,7 @@ const SelectCtl = ({ label, value, valueArray, handleChange, width }) => {
             </MenuItem>
           ))}
         </Select>
-        <FormHelperText>{label}</FormHelperText>
+        {value ? null : <FormHelperText>{label}</FormHelperText>}
       </FormControl>
     </div>
   );

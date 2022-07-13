@@ -11,6 +11,7 @@ import { select } from "d3";
 import { isMobile } from "react-device-detect";
 
 import timelineData from "../../../assets/data/timeline";
+import monarch from "../../../assets/data/monarch";
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
 import MoreMenu from "../../Controls/MoreMenu";
@@ -40,7 +41,6 @@ const ROTATE = false;
 const LINE_SIZE = 1;
 
 const TimelineSpiral = () => {
-  // let ZOOMER = null;
   const start_year = THIS_YEAR; // initial starting year in limeline, running backwards to past
   const end_year = THIS_YEAR - YEAR_RANGE_DEFAULT;
 
@@ -64,6 +64,7 @@ const TimelineSpiral = () => {
   const [tailOnly, setTailOnly] = useState(false);
   const [timeMark, setTimeMark] = useState(false);
   const [timeUnit, setTimeUnit] = useState(false);
+  const [zoomer, setZoomer] = useState(null);
 
   const [searchParams, _setSearchParams] = useSearchParams();
   const [portrait, setPortrait] = useState(false);
@@ -101,15 +102,29 @@ const TimelineSpiral = () => {
 
   const refresh = (param) => {
     //- need to reset zoom but can't save the zoom object from zoom init;
-    //- use redirect instead;
-    const loc = window.location;
-    // console.log(loc.host, param, loc.pathname, "[refresh]");
-    window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
-    // navigate(param);
+    if (isMobile) {
+      //- use redirect instead;
+      const loc = window.location;
+      window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
+    } else {
+      if (param === undefined && zoomer) {
+        // console.log(zoomer.zoom, "[zoomer]");
+        // select("svg g")
+        //   .transition()
+        //   .duration(750)
+        //   .call(zoomer.zoom.transform, d3.zoomIdentity);
+      }
+
+      if (param === undefined) {
+        navigate("");
+      } else {
+        navigate(param);
+      }
+    }
   };
   const updateURL = (key = null, value = null) => {
     if (!key) {
-      refresh("");
+      refresh();
       return;
     }
 
@@ -189,7 +204,6 @@ const TimelineSpiral = () => {
     });
   }, [searchParams]);
 
-  // let resetZoomCallBack = null;
   const initZoom = () => {
     // install zoom/pan handler: ref https://www.d3indepth.com/zoom-and-pan/
     const zoom = d3
@@ -211,7 +225,9 @@ const TimelineSpiral = () => {
         select("svg").style("cursor", "default");
       });
 
+    // console.log(zoom, "[init zoom]");
     select("svg").call(zoom);
+    setZoomer({ zoom });
   };
 
   useEffect(() => {
@@ -469,11 +485,12 @@ const TimelineSpiral = () => {
   };
 
   const buildData = (verbose = false) => {
+    // const DT_EVENT = "event";
+    // const DT_EMPEROR = "emperor";
     const spiralLen = plotConfig.spiralLen;
     const path = plotConfig.path;
 
     const sYearMax = yearWindow[0] + plotConfig.spiralYearTotal;
-    const zeroYearPos = zeroYearPixel();
     const { y: tailY, x: tailX } = spiralEndPoint();
 
     const spiralBlocks = []; // the spiral block data
@@ -483,7 +500,7 @@ const TimelineSpiral = () => {
       .domain([yearWindow[1] - plotConfig.tailYearTotal, yearWindow[1]]) // tail year range
       .range([0, plotConfig.tailLen]); // tail pixel range
 
-    const oneSpiralBlock = (d, event = false) => {
+    const oneSpiralBlock = (d, dtype = null) => {
       let block = null;
       if (!tailOnly && d.start <= sYearMax) {
         // data on spiral
@@ -496,7 +513,8 @@ const TimelineSpiral = () => {
         );
         block = {
           spiral: true,
-          event,
+          data_type: dtype,
+          info: d.info,
           ...pos,
           group: d.name,
           group_start_year: d.start,
@@ -507,10 +525,10 @@ const TimelineSpiral = () => {
       return block;
     };
 
-    const oneTailBlockLeader = (d, event = false) => {
+    const oneTailBlockLeader = (d, dtype = null) => {
       const spixel = tailTimeScale(d.start); // pixel == 0 is the spiral / tail joint point
       let epixel = null;
-      if (!event) {
+      if (!dtype) {
         epixel = tailTimeScale(d.end);
         if (!epixel || epixel > plotConfig.tailLen)
           epixel = tailTimeScale(yearWindow[1]);
@@ -525,21 +543,22 @@ const TimelineSpiral = () => {
         y: tailY,
         start: spixel,
         end: anchor,
-        event,
+        data_type: dtype,
         group: d.name,
         group_leader: true,
         group_start_year: d.start,
         group_end_year: d.end,
+        info: d.info,
       };
       return { block, anchor, epixel };
     };
 
-    const spiralEventList = (list) => {
+    const spiralExtraDataList = (list) => {
       const collected = [];
       const omited = [];
       list.forEach((d) => {
         if (d.start >= yearWindow[0]) {
-          const block = oneSpiralBlock(d, true);
+          const block = oneSpiralBlock(d, "event");
           if (block) {
             collected.push(block);
           } else {
@@ -569,14 +588,16 @@ const TimelineSpiral = () => {
         if (leftoverRaw.events) {
           if (!tailOnly && leftoverRaw.start <= sYearMax) {
             // from spiral
-            const { collected, omited } = spiralEventList(leftoverRaw.events);
+            const { collected, omited } = spiralExtraDataList(
+              leftoverRaw.events
+            );
             spiralBlocks.push(...collected);
             if (omited?.length > 0) {
-              const elist = tailEventList(omited);
+              const elist = tailExtraDataList(omited);
               tailBlocks.push(...elist);
             }
           } else {
-            const elist = tailEventList(leftoverRaw.events);
+            const elist = tailExtraDataList(leftoverRaw.events);
             tailBlocks.push(...elist);
           }
         }
@@ -591,18 +612,20 @@ const TimelineSpiral = () => {
         end: epixel,
       });
       if (d.events) {
-        const elist = tailEventList(d.events);
+        const elist = tailExtraDataList(d.events);
         tailBlocks.push(...elist);
+      }
+      if (monarch[d.name]) {
       }
     };
 
-    const tailEventList = (list) => {
-      const events = [];
+    const tailExtraDataList = (list) => {
+      const oData = [];
       list.forEach((d) => {
-        const { block } = oneTailBlockLeader(d, true);
-        if (block) events.push(block);
+        const { block } = oneTailBlockLeader(d, "event");
+        if (block) oData.push(block);
       });
-      return events;
+      return oData;
     };
 
     // let preSpiralBlock = null;
@@ -621,14 +644,16 @@ const TimelineSpiral = () => {
 
           if (lastRawData && lastRawData.start < yearWindow[0]) {
             if (lastRawData.events) {
-              const { collected, omited } = spiralEventList(lastRawData.events);
+              const { collected, omited } = spiralExtraDataList(
+                lastRawData.events
+              );
               spiralBlocks.push(...collected);
             }
             lastRawData = null;
           }
           lastRawData = d;
           if (d.events) {
-            const { collected, omited } = spiralEventList(d.events);
+            const { collected, omited } = spiralExtraDataList(d.events);
             spiralBlocks.push(...collected);
           }
         } else {
@@ -790,11 +815,11 @@ const TimelineSpiral = () => {
       select("g")
         .selectAll("rect")
         .remove()
-        .data(data.spiralBlocks.filter((d) => d.group && !d.event))
+        .data(data.spiralBlocks.filter((d) => d.group && !d.data_type))
         .enter()
         .append("rect")
         .attr("x", (d) => d.x)
-        .attr("y", (d) => d.y)
+        .attr("y", (d) => d.y - 8) // bar under line
         // draw the bars on spiral
         .attr("width", (d) => 4) //barWidth)
         .attr("class", "leader")
@@ -811,7 +836,7 @@ const TimelineSpiral = () => {
       select("g")
         .selectAll(".spiral-event-circle")
         .remove()
-        .data(data.spiralBlocks.filter((d) => d.event))
+        .data(data.spiralBlocks.filter((d) => d.data_type === "event"))
         .enter()
         .append("circle")
         .style("class", "spiral-event-circle")
@@ -823,36 +848,28 @@ const TimelineSpiral = () => {
         .attr("stroke", (d) => "#000")
         .style("opacity", 0.5);
 
-      // draw spiral label: omit label if it is too close to previous label
+      //-- draw spiral group leader label: omit label if it is too close to previous label
       let lastBlock = null;
       let lastEvent = null;
       select("g")
         .selectAll(".spiral-block-label")
         .remove()
-        .data(data.spiralBlocks.filter((d) => d.group))
+        .data(data.spiralBlocks.filter((d) => d.group && !d.data_type))
         .enter()
         .append("text")
+        .attr("dx", -6) // align label with group leader mark
         .attr("dy", (d) => {
-          let dy = 10; // move down by 10 pixel
-          if (d.event) {
-            dy = -10;
-            if (lastEvent) {
-              const delta = Math.abs(d.linePer - lastEvent.linePer);
-              if (delta < 60) {
-                dy = 16;
-              }
-            }
-          }
+          const dy = 22; // move below by 22 pixel, under the block bar
           lastEvent = d;
           return dy;
         })
         .style("text-anchor", "start")
         .style("font", "10px arial")
+        // .attr("font-weight", "bold")
         .style("class", "spiral-block-label")
         .append("textPath")
         .text((d) => {
-          let label =
-            d.group + (d.event ? "" : `(${normalizeYear(d.group_start_year)})`);
+          let label = d.group; // + `(${normalizeYear(d.group_start_year)})`;
 
           if (lastBlock) {
             const delta = Math.abs(d.linePer - lastBlock.linePer);
@@ -865,7 +882,51 @@ const TimelineSpiral = () => {
         })
         // place text along spiral
         .attr("xlink:href", "#spiral")
-        .style("fill", (d) => (d.event ? groupColor(d.group) : "grey"))
+        .attr("startOffset", (d) => {
+          return (d.linePer / spiralLen) * 100 + "%";
+        });
+
+      //-- draw event label
+      select("g")
+        .selectAll(".spiral-block-label")
+        .remove()
+        .data(
+          data.spiralBlocks.filter((d) => d.group && d.data_type === "event")
+        )
+        .enter()
+        .append("text")
+        .attr("dx", -6)
+        .attr("dy", (d) => {
+          let dy = -10; // move above by 10 pixel
+
+          if (lastEvent) {
+            const delta = Math.abs(d.linePer - lastEvent.linePer);
+            if (delta < 60) {
+              dy = 16;
+            }
+          }
+
+          lastEvent = d;
+          return dy;
+        })
+        .style("text-anchor", "start")
+        .style("font", "10px arial")
+        .style("class", "spiral-block-label")
+        .append("textPath")
+        .text((d) => {
+          let label = d.group;
+          if (lastBlock) {
+            const delta = Math.abs(d.linePer - lastBlock.linePer);
+            if (delta > 0 && delta < BLOCK_MIN_GAP) {
+              label = "";
+            }
+          }
+          lastBlock = d;
+          return label;
+        })
+        // place text along spiral
+        .attr("xlink:href", "#spiral")
+        .style("fill", (d) => groupColor(d.group))
         .attr("startOffset", (d) => {
           return (d.linePer / spiralLen) * 100 + "%";
         });
@@ -886,7 +947,7 @@ const TimelineSpiral = () => {
       select("g").selectAll(".tailgroup").remove();
       select("g")
         .selectAll(".tailgroup")
-        .data(data.tailBlocks.filter((d) => d.group && !d.event))
+        .data(data.tailBlocks.filter((d) => d.group && !d.data_type))
         .enter()
         .append("rect")
         .attr("class", "tailgroup")
@@ -896,7 +957,7 @@ const TimelineSpiral = () => {
         .attr("class", (d) => (d.group_leader ? "leader" : "noleader"))
         .attr("x", (d) => d.start + data.xShift)
         .attr("y", (d) => {
-          let y = d.y + data.yShift;
+          let y = d.y + data.yShift + 4; // line under tail line
           if (avoidGroupOverlap) {
             if (lastX && lastGroup) {
               if (d.x < lastX && d.group !== lastGroup) {
@@ -909,8 +970,8 @@ const TimelineSpiral = () => {
             lastY = y;
             lastGroup = d.group;
           }
-
-          return d.group_leader ? y - RECT_HEIGHT * 2 : y - RECT_HEIGHT;
+          return y - RECT_HEIGHT;
+          // return d.group_leader ? y - RECT_HEIGHT * 2 : y - RECT_HEIGHT; // leader extend upwards
         })
         .attr("width", (d) => {
           const w = d.end - d.start;
@@ -926,67 +987,84 @@ const TimelineSpiral = () => {
     select("g")
       .selectAll(".tail-event-circle")
       .remove()
-      .data(data.tailBlocks.filter((d) => d.event))
+      .data(data.tailBlocks.filter((d) => d.data_type === "event"))
       .enter()
       .append("circle")
       .style("class", "tail-event-circle")
       .attr("class", "leader")
       .attr("cx", (d) => d.x + data.xShift)
-      .attr("cy", (d) => d.y + data.yShift - RECT_HEIGHT * 0.5)
+      .attr("cy", (d) => d.y + data.yShift + RECT_HEIGHT * 0.5) // move down to align with tail bar
       .attr("r", (_, i) => CIRCLE_R)
       .style("fill", (d) => groupColor(d.group))
       .attr("stroke", (d) => "#000")
       .style("opacity", 0.5);
 
-    // draw leader AND event label on tail line, skip event label if it is too close to previous event
     if (data.tailBlocks.length > 0) {
-      let flip = false; //alternatively show label on top / down of line to avoid overlapping
-      const aheadPos = { true: [-1000], false: [-1000] };
-      let lastBlock = null;
+      let lastLeader = null;
+      const GAP_SIZE = 6;
+      //-- draw leader AND event label on tail line, skip event label if it is too close to previous event
       select("g")
         .selectAll(".taillabel")
-        .data(data.tailBlocks.filter((d) => d.group_start_year))
+        .data(data.tailBlocks.filter((d) => d.group_start_year && !d.data_type))
         .enter()
         .append("text")
         .attr("class", "tailgroup")
-        .attr("x", (d) => (d.event ? 0 : d.x + data.xShift))
-        .attr("y", (d) => {
-          if (d.event) return 0;
-          const y = d.y + (flip ? 12 : -12);
-          const lastx = aheadPos[flip].sort().reverse()[0];
-          // console.log(Math.abs(d.x - lastx), flip, d.group);
-          flip = !flip;
-          if (Math.abs(d.x - lastx) < 50) {
-            flip = !flip;
-          }
-          aheadPos[flip].push(d.x);
-          return y + data.yShift;
-        })
-        .style("text-anchor", "start")
-        .style("font", "10px arial")
+        .style("text-anchor", "end")
+        .style("font", "12px arial")
+        .attr("font-weight", "bold")
         .text((d) => {
-          let label =
-            d.group + (d.event ? "" : `(${normalizeYear(d.group_start_year)})`);
-          if (lastBlock) {
-            const dx = Math.abs(d.x - lastBlock.x);
+          const delta = lastLeader
+            ? Math.abs(d.x - lastLeader.x)
+            : GAP_SIZE + 1;
+          const label = delta > GAP_SIZE ? d.group : ""; //`${d.group}(${normalizeYear(d.group_start_year)})`;
 
-            if (d.event && lastBlock.event && dx < 16) {
-              label = "";
-            }
-          }
-          lastBlock = d;
+          lastLeader = d;
           return label;
         })
         .attr(
           "transform",
-          (d) => {
-            if (d.event) {
-              return `translate(${d.x + data.xShift + 4},${
-                d.y + data.yShift - 10
-              }) rotate(-90)`;
-            }
-          } // rotate the text
+          (d) =>
+            `translate(${d.x + data.xShift + 8},${
+              d.y + data.yShift + 10 // shift downwards
+            }) rotate(-90)`
+          // rotate the text
         );
+
+      //-- tail events label
+      let lastEvent = null;
+      if (data.tailBlocks.length > 0) {
+        select("g")
+          .selectAll(".taillabel")
+          .data(
+            data.tailBlocks.filter(
+              (d) => d.group_start_year && d.data_type === "event"
+            )
+          )
+          .enter()
+          .append("text")
+          .attr("class", "tailgroup")
+          .attr("x", 0)
+          .attr("y", 0)
+          .style("text-anchor", "start")
+          .style("font", "10px arial")
+          .text((d) => {
+            const delta = lastEvent
+              ? Math.abs(d.x - lastEvent.x)
+              : GAP_SIZE + 1;
+            const label = delta > GAP_SIZE ? d.group : "";
+
+            lastEvent = d;
+            return label;
+          })
+          .attr(
+            "transform",
+            (d) =>
+              `translate(${d.x + data.xShift + 4},${
+                d.y + data.yShift - 10
+              }) rotate(-90)`
+            // rotate the text
+          );
+      }
     }
   };
 
@@ -1054,6 +1132,12 @@ const TimelineSpiral = () => {
     if (tailMarks.length > 0) {
       let flap = false;
       const labelHeight = 20;
+      const y0 = tailOnly ? -50 : data.yShift;
+      if (tailOnly) {
+        drawTailLine(y0);
+      }
+      console.log(y0, data.yShift, "[y0]");
+
       // draw tail year marks
       select("g")
         .selectAll(".tail-year-mark")
@@ -1065,12 +1149,12 @@ const TimelineSpiral = () => {
         .style("stroke", (d) => markColor(d.year))
         .style("stroke-width", barWidth)
         .attr("x1", (d) => d.x + data.xShift)
-        .attr("y1", (d) => d.y + data.yShift)
+        .attr("y1", (d) => d.y + y0)
         .attr("x2", (d) => d.x + data.xShift)
         .attr("y2", (d) => {
           const dy = d.y + (flap ? barTallHeight : barShortHeight);
           flap = !flap;
-          return dy + data.yShift;
+          return dy + y0;
         })
         .attr("startOffset", function (d) {
           return (d.linePer / spiralLen) * 100 + "%";
@@ -1086,7 +1170,7 @@ const TimelineSpiral = () => {
           .attr("y", () => {
             const y = d.y + 6 + (flap ? labelHeight : barTallHeight);
             flap = !flap;
-            return y + data.yShift;
+            return y + y0;
           }) //magic number here
           .attr("text-anchor", "middle")
           .style("font", "10px arial")
@@ -1098,26 +1182,28 @@ const TimelineSpiral = () => {
     // select("g").selectAll(".zero-year").style("color", "red");
   };
 
-  const drawTailLine = () => {
+  const drawTailLine = (y = null) => {
     const tailLen = plotConfig.tailLen;
     const data = plotData;
+    const y0 = y !== null ? y : data.yShift;
+    // console.log(y0, "[drawTailLine]");
     select("g").selectAll(".tail-line").remove();
     select("g")
       .append("line")
       .style("class", "tail-line")
       .style("stroke", "steelblue")
       .attr("stroke-width", LINE_SIZE)
-      .attr("x1", data.tailX + +data.xShift)
-      .attr("y1", data.tailY + data.yShift)
-      .attr("x2", tailLen + +data.xShift)
-      .attr("y2", data.tailY + data.yShift);
+      .attr("x1", data.tailX + data.xShift)
+      .attr("y1", data.tailY + y0)
+      .attr("x2", tailLen + data.xShift)
+      .attr("y2", data.tailY + y0);
   };
 
   const drawScale = () => {
     if (!timeUnit) return;
 
     const x0 = -220;
-    const y0 = -230;
+    const y0 = 200; // // -230; // top-left corner
     const h = -4;
     const yunit = yearMarkUnit();
     const len = plotConfig.pixPerYear * yunit;
@@ -1248,10 +1334,13 @@ const TimelineSpiral = () => {
   };
 
   const addInfo = (x, y, d) => {
-    let text = d.event
-      ? `${d.group} : ${normalizeYear(d.group_start_year)}`
-      : `${d.group}`;
-    if (!d.event) {
+    let text =
+      d.data_type === "event"
+        ? `${d.group} : ${normalizeYear(d.group_start_year)}. ${
+            d.info ? d.info : ""
+          }`
+        : `${d.group}`;
+    if (!d.data_type) {
       text +=
         `[${normalizeYear(d.group_start_year)}${
           d.group_end_year !== undefined
@@ -1265,7 +1354,12 @@ const TimelineSpiral = () => {
         }`;
     }
 
-    setTipPositioin([x, y, text, d.event ? groupColor(d.group) : "#000"]);
+    setTipPositioin([
+      x,
+      y,
+      text,
+      d.data_type === "event" ? groupColor(d.group) : "#000",
+    ]);
   };
 
   const drawTips = () => {
@@ -1294,7 +1388,7 @@ const TimelineSpiral = () => {
 
   //-- event handlers
   function zoomHandler(e) {
-    d3.select("svg g").attr(
+    select("svg g").attr(
       "transform",
       // `${e.transform} translate(${SPIRAL_R}, ${SPIRAL_R})`
       `${e.transform} rotate(${
@@ -1370,7 +1464,7 @@ const TimelineSpiral = () => {
   const debugFn = () => {
     // const svg = select("svg");
     // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
-    console.info(portrait, "debugFn");
+    console.info(plotData, "debugFn");
   };
   // console.info(ZOOMER, "[DEBUG] render");
 
@@ -1541,6 +1635,7 @@ const TimelineSpiral = () => {
             zIndex: 100,
             top: tipPosition[0],
             left: tipPosition[1],
+            maxWidth: 200,
           }}
         >
           {tipPosition[2]}

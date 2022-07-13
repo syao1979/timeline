@@ -1,6 +1,7 @@
 import React from "react";
 
 import Avatar from "@mui/material/Avatar";
+import IconButton from "@mui/material/IconButton";
 import SpaceBarIcon from "@mui/icons-material/SpaceBar";
 import MoreTimeIcon from "@mui/icons-material/MoreTime";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
@@ -32,12 +33,12 @@ const AvertarCtl = ({ type, label, callback, checked, size }) => {
   const height = width;
   return (
     <Tooltip title={label} placement="top" arrow>
-      <Avatar
+      <IconButton
         sx={{ bgcolor: checked ? "#16E2F5" : "", width, height, margin: 1 }}
         onClick={callback}
       >
         {getIcon()}
-      </Avatar>
+      </IconButton>
     </Tooltip>
   );
 };
