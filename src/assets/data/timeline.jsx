@@ -212,7 +212,7 @@ const timeline = [
     name: "黄帝",
     start: -2697, // 黄帝元年
     end: -2070,
-    format: "炎帝,黄帝,尧,舜,禹",
+    info: "炎帝,黄帝,尧,舜,禹",
   },
   { name: "夏", start: -2070, end: -1559 },
   {
@@ -226,7 +226,7 @@ const timeline = [
     start: -1046,
     end: -771,
     events: [
-      { name: "国人暴动/周召共和", start: -841 },
+      { name: "国人暴动", start: -841 },
       { name: "犬戎攻周", start: -771 },
     ],
   },
