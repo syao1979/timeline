@@ -935,8 +935,7 @@ const TimelineSpiral = () => {
         .data(data.tailBlocks.filter((d) => d.data_type === "event"))
         .enter()
         .append("circle")
-        .style("class", "tail-event-circle")
-        .attr("class", "leader")
+        .attr("class", "tail-event-circle")
         .attr("cx", (d) => d.x + data.xShift)
         .attr("cy", (d) => d.y + data.yShift + RECT_HEIGHT * 0.5) // move down to align with tail bar
         .attr("r", (_, i) => CIRCLE_R)
@@ -1016,7 +1015,7 @@ const TimelineSpiral = () => {
       const monData = data.tailBlocks.filter(
         (d) => d.group_start_year && d.data_type === "monarch"
       );
-      const VG = data.yShift + 80; // Y- gap
+      const VG = data.yShift + 60; // Y- gap
       const HG = data.xShift; // X-shift
 
       //-- monarch connect lines
@@ -1025,15 +1024,17 @@ const TimelineSpiral = () => {
         let x1 = d.start + HG;
         let x2 = d.end + HG;
         let y1 = d.y + VG;
-        connData.push({ x1, y1, x2, y2: y1 }); // from d.start to d.end line
+        connData.push({ x1, y1, x2, y2: y1, type: "bar" }); // from d.start to d.end line
         connData.push({ x1, y1, x2: x1, y2: y1 - 10 }); // from d.start upwards of 10 pixel
       });
       select("g")
-        .selectAll(".monarch-connect")
+        .selectAll(".monarch-connect, monarch-bar")
         .data(connData)
         .enter()
         .append("line")
-        .style("class", "scale-bar")
+        .attr("class", (d) =>
+          d.type === "bar" ? "monarch-bar" : "monarch-connect"
+        )
         .style("stroke", "steelblue")
         .style("stroke-width", 2)
         .attr("x1", (d) => d.x1)
@@ -1352,7 +1353,9 @@ const TimelineSpiral = () => {
         .tail-block,
         .tail-leader-label, 
         .tail-event-label, 
-        .monarch-label`
+        .tail-event-circle,
+        .monarch-label,
+        .monarch-bar`
       )
       .on("mouseover", function (event, d) {
         select(this).style("cursor", "help"); // "context-menu");

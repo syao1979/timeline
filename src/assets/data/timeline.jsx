@@ -237,7 +237,16 @@ const timeline = [
     end: -256,
     events: [
       { name: "春秋", start: -770, end: -476 },
-      { name: "战国", start: -475, end: -221 },
+      { name: "王子克之乱", start: -693 },
+      { name: "齐桓公称霸", start: -681 },
+      { name: "武公君晋", start: -678 },
+      { name: "王子带之乱", start: -636 },
+      { name: "弭兵会盟/晋楚同霸", start: -546 },
+      { name: "三家分晋", start: -453 },
+      { name: "田和代齐", start: -386 },
+      // { name: "战国", start: -475, end: -221 },
+      { name: "商鞅变法", start: -356, end: -350 },
+      { name: "秦灭周", start: -256 },
     ],
   },
   {
