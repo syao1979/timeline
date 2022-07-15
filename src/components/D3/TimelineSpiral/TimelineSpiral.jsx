@@ -500,22 +500,27 @@ const TimelineSpiral = () => {
 
     const spiralExtraDataList = (list) => {
       // console.log(list, "[spiralExtraDataList]");
+      const leftover = []; // spiral overflow onto tail
       if (list) {
-        let lastRawData = null;
         list.forEach((d) => {
-          if (d.start >= yearWindow[0]) {
+          if (d.start > sYearMax) {
+            leftover.push(d);
+          } else if (d.start >= yearWindow[0]) {
+            // console.log(
+            //   d.name,
+            //   d.start,
+            //   sYearMax,
+            //   "[spiralExtraDataList] event"
+            // );
             oneSpiralBlock(d, "event");
-          } else {
-            lastRawData = d;
           }
         });
-        if (lastRawData) oneSpiralBlock(lastRawData, "event");
       }
+      return leftover;
     };
     const oneSpiralBlock = (d, dtype = null) => {
       // console.log(d, dtype, "[oneSpiralBlock]");
-      let block = null;
-      if (!tailOnly && d.start <= sYearMax) {
+      if (!tailOnly && d.start >= yearWindow[0]) {
         // data on spiral
         const pos = year2pixelPositionOnSpiral(
           d.start,
@@ -524,7 +529,8 @@ const TimelineSpiral = () => {
           spiralLen,
           path
         );
-        block = {
+
+        const block = {
           spiral: true,
           data_type: dtype,
           info: d.info,
@@ -535,41 +541,48 @@ const TimelineSpiral = () => {
           linePer: pos.linePer, // for group leader labelling - use the prevous block's coordinate
         };
         spiralBlocks.push(block);
+
+        if (dtype !== "events" && d.events) {
+          // if this block's event overflow onto tail, collect the extra on tail
+          const eventLeftover = spiralExtraDataList(d.events);
+          if (eventLeftover?.length > 0) {
+            // console.log(eventLeftover, "[eventLeftover]");
+            tailExtraDataList(eventLeftover);
+          }
+        }
+
+        // optional monarch, in case the monarch list overflow onto tail
+        tailExtraDataList(
+          monarch[d.name]?.filter((d) => d.start),
+          "monarch"
+        );
       }
-      if (dtype !== "events" && d.events) spiralExtraDataList(d.events);
     };
 
     const tailExtraDataList = (list, dtype = "event") => {
       const oData = [];
       if (!list) return oData;
-      // console.log(list, dtype, "[tailExtraDataList]");
 
       const addToList = (d) => {
+        // console.log(d, dtype, "[tailExtraDataList]");
         const { block } = oneTailBlockLeader(d, dtype);
         if (block) oData.push(block);
       };
 
-      let lastRawData = null; // so to keep atmost 1 out-range data
       list.forEach((d) => {
-        if (d.start >= yearWindow[0]) {
-          if (lastRawData) {
-            addToList(lastRawData);
-            lastRawData = null;
-          }
+        if (d.start >= sYearMax && d.start <= yearWindow[1]) {
           addToList(d);
-        } else {
-          lastRawData = d;
         }
       });
       return oData;
     };
     const oneTailBlockLeader = (d, dtype = null) => {
-      // console.log(d, "[oneTailBlockLeader]");
       //- start and end pixel
       const spixel = tailTimeScale(d.start); // pixel == 0 is the spiral / tail joint point
       let epixel = null;
       if (!dtype || dtype === "monarch") {
-        epixel = tailTimeScale(d.end);
+        const end = d.end === d.start ? d.start + 0.1 : d.end; // same start and end causes wrong epixel
+        epixel = tailTimeScale(end);
         if (!epixel || epixel > plotConfig.tailLen) {
           epixel = tailTimeScale(yearWindow[1]);
         }
@@ -592,12 +605,24 @@ const TimelineSpiral = () => {
       tailBlocks.push(block);
       return { block, anchor, epixel };
     };
-    const oneTailBlock = (d, leftoverRaw = null) => {
-      // console.log(d, sYearMax, "[oneTailBlock]");
-      if (d.start < sYearMax || d.start >= yearWindow[1]) {
-        // console.log(d.name, d.start, sYearMax, "[oneTailBlock] skip");
+    const oneTailBlock = (d, leftover = false) => {
+      const collectExtra = (d) => {
+        // optional events
+        tailExtraDataList(d.events);
+
+        // optional monarch
+        tailExtraDataList(
+          monarch[d.name]?.filter((d) => d.start),
+          "monarch"
+        );
+      };
+
+      if (leftover) {
+        // console.log(d, "[oneTailBlock] leftover");
+        collectExtra(d);
         return;
       }
+
       const { block, anchor, epixel } = oneTailBlockLeader(d);
 
       tailBlocks.push({
@@ -608,27 +633,33 @@ const TimelineSpiral = () => {
         end: epixel,
       });
 
-      // optional events
-      const elist = tailExtraDataList(d.events);
-      tailBlocks.push(...elist);
-
-      // optional monarch
-      const mlist = tailExtraDataList(
-        monarch[d.name]?.filter((d) => d.start),
-        "monarch"
-      );
-      tailBlocks.push(...mlist);
+      collectExtra(d);
     };
 
+    // main loop of raw data
+    let lastLeftoverRawData = null;
     timelineData.forEach((d) => {
-      if (!tailOnly && d.start <= sYearMax) {
-        // spiral blocks
-        oneSpiralBlock(d);
-      } else {
-        // data on tail
-        oneTailBlock(d);
+      if (d.start >= yearWindow[0] && d.start <= yearWindow[1]) {
+        if (!tailOnly && d.start <= sYearMax) {
+          oneSpiralBlock(d);
+        } else {
+          oneTailBlock(d);
+        }
+      } else if (d.start < yearWindow[1]) {
+        lastLeftoverRawData = d;
       }
     });
+
+    // leftover data
+    if (lastLeftoverRawData) {
+      if (!tailOnly) {
+        // must be from spiral (and no spiral block in yearWindow range), just collect events
+        spiralExtraDataList(lastLeftoverRawData.events);
+      } else {
+        // leftover must be from tail
+        oneTailBlock(lastLeftoverRawData, true);
+      }
+    }
 
     return {
       spiralBlocks,
@@ -1024,11 +1055,12 @@ const TimelineSpiral = () => {
         let x1 = d.start + HG;
         let x2 = d.end + HG;
         let y1 = d.y + VG;
-        connData.push({ x1, y1, x2, y2: y1, type: "bar" }); // from d.start to d.end line
-        connData.push({ x1, y1, x2: x1, y2: y1 - 10 }); // from d.start upwards of 10 pixel
+        connData.push({ ...d, x1, y1, x2, y2: y1 }); // from d.start to d.end line
+        connData.push({ ...d, x1, y1, x2: x1, y2: y1 - 10, type: "bar" }); // from d.start upwards of 10 pixel
       });
+
       select("g")
-        .selectAll(".monarch-connect, monarch-bar")
+        .selectAll(".monarch-connect, .monarch-bar")
         .data(connData)
         .enter()
         .append("line")
@@ -1355,7 +1387,8 @@ const TimelineSpiral = () => {
         .tail-event-label, 
         .tail-event-circle,
         .monarch-label,
-        .monarch-bar`
+        .monarch-bar,
+        .monarch-connect`
       )
       .on("mouseover", function (event, d) {
         select(this).style("cursor", "help"); // "context-menu");
