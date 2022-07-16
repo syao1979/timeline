@@ -22,7 +22,11 @@ import AvertaCtl, {
   TYPE_RESET,
 } from "../../Controls/AvertarCtl";
 
-import { normalizeYear, cleanNameString } from "../../../utils/Formatter";
+import {
+  normalizeYear,
+  cleanNameString,
+  notNull,
+} from "../../../utils/Formatter";
 
 const SPIRAL_R = 250;
 const TAIL_GAP = 50;
@@ -65,6 +69,7 @@ const TimelineSpiral = () => {
   const [timeMark, setTimeMark] = useState(false);
   const [timeUnit, setTimeUnit] = useState(false);
   const [zoomer, setZoomer] = useState(null);
+  const [sliderObj, _setSliderObj] = useState(null);
 
   const [searchParams, _setSearchParams] = useSearchParams();
   const [portrait, setPortrait] = useState(false);
@@ -81,14 +86,6 @@ const TimelineSpiral = () => {
       dict[param] = value;
     }
     return Object.keys(dict).length > 0 ? dict : null;
-  };
-
-  const searchParamDataSize = () => {
-    let size = 0;
-    for (const entry of searchParams.entries()) {
-      size++;
-    }
-    return size;
   };
 
   const rangeToURL = (range) => {
@@ -127,14 +124,14 @@ const TimelineSpiral = () => {
       refresh();
       return;
     }
-
+    // console.log(key, value, "[updateURL]");
     const param = searchParams.get(key);
     if (param) {
       searchParams.delete(key);
     }
 
-    if (value) {
-      // need check if "" or 0 are valid values
+    if (notNull(value) && value !== false) {
+      // not Null and not false
       searchParams.append(key, value);
     }
 
@@ -175,6 +172,7 @@ const TimelineSpiral = () => {
 
     Object.keys(boolMap).forEach((kname) => {
       const fn = boolMap[kname];
+      // if (dict) console.log(kname, dict[kname], "[bM]");
       const value = dict ? dict[kname] !== undefined : false;
       fn(value);
     });
@@ -192,8 +190,8 @@ const TimelineSpiral = () => {
       const value = dict
         ? parseInt(dict[kname])
         : singleIntValMap[kname].default;
-      // console.log(kname, value, current, "[timeButt]");
-      if (value !== current) fn(value);
+
+      if (value !== current) fn(isNaN(value) ? "" : value);
     });
 
     Object.keys(rangeMap).forEach((kname) => {
@@ -1400,17 +1398,6 @@ const TimelineSpiral = () => {
       });
   };
 
-  const minDist = () => {
-    const dist = yearLimits[1] - yearLimits[0];
-    if (dist <= 1000) {
-      return 50;
-    } else if (dist <= 10000) {
-      return 500;
-    } else {
-      return 1000;
-    }
-  };
-
   //-- event handlers
   function zoomHandler(e) {
     select("svg g").attr(
@@ -1422,32 +1409,23 @@ const TimelineSpiral = () => {
     );
   }
 
-  const handleYearRangeChange = (_event, newValue, activeThumb) => {
-    // activeThumb: 0->left; 1->right
-    if (!Array.isArray(newValue)) {
-      return;
-    }
-    const dist = newValue[1] - newValue[0];
-
-    const minDistance = minDist(dist);
-    let range = rangeToURL(newValue);
-    if (dist < minDistance) {
-      if (activeThumb === 0 && newValue[0] + minDistance <= yearWindow[1]) {
-        range = rangeToURL([newValue[0], newValue[0] + minDistance]);
-      } else if (newValue[1] - minDistance >= yearWindow[0]) {
-        range = rangeToURL([newValue[1] - minDistance, newValue[1]]);
-      }
-    }
-    updateURL("yw", range);
+  const setSliderObj = (val, idx) => {
+    _setSliderObj({ val, idx });
+    updateURL("yw", val);
+  };
+  // const handleYearRangeChange = (_event, newValue, activeThumb) => {
+  const handleYearRangeChange = (e, val) => {
+    // updateURL("yw", [...sliderObj.val]);
   };
 
   const handleTimeHeadChange = (e) => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
-
     const buttObj = timeButt
       ? timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]]
       : null;
+
+    // console.log(value, buttObj, order, "[THead]");
     if (buttObj && order.index >= buttObj.index) return; // range zero or crossed
 
     const range = [order.start, buttObj ? buttObj.start : yearWindow[1]];
@@ -1458,8 +1436,8 @@ const TimelineSpiral = () => {
     setTimeButtArray({
       ordered: buttArray,
     });
-    updateURL("yl", rangeToURL(range));
-    updateURL("yw", rangeToURL(range));
+    updateURL("yl", range);
+    updateURL("yw", range);
   };
 
   const handleTimeButtChange = (e) => {
@@ -1490,7 +1468,14 @@ const TimelineSpiral = () => {
   const debugFn = () => {
     // const svg = select("svg");
     // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
-    console.info(plotData, "debugFn");
+    console.info(
+      timeHead,
+      timeHeadArray.rlookup[timeHead],
+      timeButt,
+      timeButt ? timeHeadArray.rlookup[timeButt] : "NULL",
+      plotData,
+      "debugFn"
+    );
   };
   // console.info(ZOOMER, "[DEBUG] render");
 
@@ -1550,6 +1535,7 @@ const TimelineSpiral = () => {
       key="range-ctl"
       limits={yearLimits}
       value={yearWindow}
+      setRange={setSliderObj}
       handleChange={handleYearRangeChange}
       width={150}
     />
@@ -1559,7 +1545,7 @@ const TimelineSpiral = () => {
     <SelectCtl
       key="select-ctl-start"
       label="起始"
-      value={timeHead ? timeHeadArray.rlookup[timeHead] : ""}
+      value={notNull(timeHead) ? timeHeadArray.rlookup[timeHead] : ""}
       valueArray={timeHeadArray.ordered?.map((d) => d[1])}
       handleChange={handleTimeHeadChange}
       width={80}
@@ -1570,7 +1556,9 @@ const TimelineSpiral = () => {
     <SelectCtl
       key="select-ctl-end"
       label="终结"
-      value={timeButt ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]}
+      value={
+        notNull(timeButt) ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]
+      }
       valueArray={timeButtArray.ordered?.map((d) => d[1])}
       handleChange={handleTimeButtChange}
       width={80}

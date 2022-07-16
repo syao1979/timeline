@@ -55,4 +55,8 @@ const cleanNameString = (name) => {
   return name.replace("/", ""); // can replace more here
 };
 
-export { normalizeYear, cleanNameString };
+// not undefined, null or ""; 0 is not null
+const notNull = (value) =>
+  !(value === null || value === undefined || !`${value}`);
+
+export { normalizeYear, cleanNameString, notNull };
