@@ -12,6 +12,8 @@ import { isMobile } from "react-device-detect";
 
 import timelineData from "../../../assets/data/timeline";
 import monarch from "../../../assets/data/monarch";
+import science from "../../../assets/data/science";
+
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
 import MoreMenu from "../../Controls/MoreMenu";
@@ -36,7 +38,7 @@ const BLOCK_MIN_GAP = 28;
 const GROUP_LEAD_WIDTH = 6;
 const SPIRAL_START = 0;
 const SPIRAL_END = 2; // need to be even number to end at top
-const CIRCLE_R = 6;
+const CIRCLE_R = 4.5;
 const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
 const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const THIS_YEAR = new Date().getFullYear();
@@ -88,9 +90,6 @@ const TimelineSpiral = () => {
     return Object.keys(dict).length > 0 ? dict : null;
   };
 
-  const rangeToURL = (range) => {
-    return `${range[0]},${range[1]}`;
-  };
   const urlToIntRange = (value) => {
     return value.split(",").map((d) => parseInt(d));
   };
@@ -99,25 +98,25 @@ const TimelineSpiral = () => {
 
   const refresh = (param) => {
     //- need to reset zoom but can't save the zoom object from zoom init;
-    if (isMobile) {
-      //- use redirect instead;
-      const loc = window.location;
-      window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
-    } else {
-      if (param === undefined && zoomer) {
-        // console.log(zoomer.zoom, "[zoomer]");
-        // select("svg g")
-        //   .transition()
-        //   .duration(750)
-        //   .call(zoomer.zoom.transform, d3.zoomIdentity);
-      }
-
-      if (param === undefined) {
-        navigate("");
-      } else {
-        navigate(param);
-      }
+    // if (isMobile) {
+    //   //- use redirect instead;
+    //   const loc = window.location;
+    //   window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
+    // } else {
+    if (param === undefined && zoomer) {
+      // console.log(zoomer.zoom, "[zoomer]");
+      // select("svg g")
+      //   .transition()
+      //   .duration(750)
+      //   .call(zoomer.zoom.transform, d3.zoomIdentity);
     }
+
+    if (param === undefined) {
+      navigate("");
+    } else {
+      navigate(param);
+    }
+    // }
   };
   const updateURL = (key = null, value = null) => {
     if (!key) {
@@ -497,19 +496,12 @@ const TimelineSpiral = () => {
       .range([0, plotConfig.tailLen]); // tail pixel range
 
     const spiralExtraDataList = (list) => {
-      // console.log(list, "[spiralExtraDataList]");
       const leftover = []; // spiral overflow onto tail
       if (list) {
         list.forEach((d) => {
           if (d.start > sYearMax) {
             leftover.push(d);
           } else if (d.start >= yearWindow[0]) {
-            // console.log(
-            //   d.name,
-            //   d.start,
-            //   sYearMax,
-            //   "[spiralExtraDataList] event"
-            // );
             oneSpiralBlock(d, "event");
           }
         });
@@ -562,7 +554,6 @@ const TimelineSpiral = () => {
       if (!list) return oData;
 
       const addToList = (d) => {
-        // console.log(d, dtype, "[tailExtraDataList]");
         const { block } = oneTailBlockLeader(d, dtype);
         if (block) oData.push(block);
       };
@@ -658,6 +649,9 @@ const TimelineSpiral = () => {
         oneTailBlock(lastLeftoverRawData, true);
       }
     }
+
+    // collect scince data
+    tailExtraDataList(science, "science");
 
     return {
       spiralBlocks,
@@ -1098,6 +1092,69 @@ const TimelineSpiral = () => {
           // rotate the text
         );
     }
+
+    //-- tail scinece label
+    if (data.tailBlocks.length > 0) {
+      const sData = data.tailBlocks.filter(
+        (d) => d.group_start_year && d.data_type === "science"
+      );
+      const VG = data.yShift + 2; // Y- gap
+      const HG = data.xShift; // X-shift
+
+      //--  connect lines
+      select("g")
+        .selectAll(".science-line")
+        .data(sData)
+        .enter()
+        .append("line")
+        .attr("class", "science-line")
+        .style("stroke", "#ccc")
+        .style("stroke-dasharray", "3, 3")
+        .style("stroke-width", 1)
+        .attr("x1", (d) => d.x + HG)
+        .attr("y1", (d) => d.y + VG + 8)
+        .attr("x2", (d) => d.x + HG)
+        .attr("y2", (d) => d.y + VG + 18);
+
+      //-- scinece  circle
+      let lastLeader = null;
+      // select("g")
+      //   .selectAll(".tail-science-circle")
+      //   .data(sData)
+      //   .enter()
+      //   .append("circle")
+      //   .attr("class", "tail-science-circle")
+      //   .attr("cx", (d) => d.x + HG)
+      //   .attr("cy", (d) => d.y + VG) // move down to align with tail bar
+      //   .attr("r", (_, i) => 4)
+      //   .style("fill", (d) => "#000")
+      //   .attr("stroke", (d) => "#000");
+      // .style("opacity", 0.5);
+
+      select("g")
+        .selectAll(".tail-science-label")
+        .data(sData)
+        .enter()
+        .append("text")
+        .attr("class", "tail-science-label")
+        .style("text-anchor", "end")
+        .style("font", "12px arial")
+        .attr("font-weight", "bold")
+        .text((d) => {
+          const delta = lastLeader
+            ? Math.abs(d.x - lastLeader.x)
+            : GAP_SIZE + 1;
+          const label = delta > GAP_SIZE ? d.group : "";
+          // console.log(d, d.start.toFixed(0), d.end.toFixed(0), "[monarch]");
+          lastLeader = d;
+          return label;
+        })
+        .attr(
+          "transform",
+          (d) => `translate(${d.x + HG + 4},${d.y + VG + 20}) rotate(-90)`
+          // rotate the text
+        );
+    }
   };
 
   const drawTimeMarks = () => {
@@ -1351,6 +1408,7 @@ const TimelineSpiral = () => {
           d.info ? d.info : ""
         }`
       : `${d.group}`;
+
     if (!d.data_type) {
       text +=
         `[${normalizeYear(d.group_start_year)}${
@@ -1363,6 +1421,10 @@ const TimelineSpiral = () => {
             ? ` [${d.group_end_year - d.group_start_year}]`
             : ""
         }`;
+
+      if (d.info) {
+        text += `\n${d.info}`;
+      }
     }
 
     setTipPositioin([
@@ -1386,7 +1448,9 @@ const TimelineSpiral = () => {
         .tail-event-circle,
         .monarch-label,
         .monarch-bar,
-        .monarch-connect`
+        .monarch-connect,
+        .tail-science-label,
+        .tail-science-circle`
       )
       .on("mouseover", function (event, d) {
         select(this).style("cursor", "help"); // "context-menu");

@@ -25,13 +25,15 @@ const TimelineRange = ({
 
     let newRange = newValue;
     if (newValue[1] - newValue[0] < minDistance) {
-      if (activeThumb === 0) {
-        const clamped = Math.min(newValue[0], limits[1] - minDistance);
-        newRange = [clamped, clamped + minDistance];
-      } else {
-        const clamped = Math.max(newValue[1], limits[0] + minDistance);
-        newRange = [clamped - minDistance, clamped];
-      }
+      return;
+      //-- the flowing code moves the min range move within the max range
+      // if (activeThumb === 0) {
+      //   const clamped = Math.min(newValue[0], limits[1] - minDistance);
+      //   newRange = [clamped, clamped + minDistance];
+      // } else {
+      //   const clamped = Math.max(newValue[1], limits[0] + minDistance);
+      //   newRange = [clamped - minDistance, clamped];
+      // }
     }
     setCurrentValue(newRange);
     setRange(newRange, activeThumb);

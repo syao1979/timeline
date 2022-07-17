@@ -240,22 +240,35 @@ const timeline = [
       { name: "王子克之乱", start: -693 },
       { name: "齐桓公称霸", start: -681 },
       { name: "武公君晋", start: -678 },
+      {
+        name: "泓水之战",
+        start: -638,
+        info: "宋襄公讨伐郑国，与救郑楚兵战于泓水。宋襄公讲究“仁义”，要待楚兵渡河列阵后再战，结果大败受伤，次年伤重而死，后葬于襄陵",
+      },
       { name: "王子带之乱", start: -636 },
       { name: "弭兵会盟/晋楚同霸", start: -546 },
-      { name: "三家分晋", start: -453 },
+      { name: "三家分晋", start: -403 },
       { name: "田和代齐", start: -386 },
       // { name: "战国", start: -475, end: -221 },
       { name: "商鞅变法", start: -356, end: -350 },
       { name: "秦灭周", start: -256 },
     ],
+    famous: {
+      china: [
+        {
+          name: "孔子",
+        },
+      ],
+      world: [],
+    },
   },
   {
     name: "秦",
-    info: "秦统一　确立郡县制　统一货币　度量衡和文字",
+    info: "秦统天下,确立郡县制,统一货币,度量衡和文字",
     start: -221,
     end: -206,
     events: [
-      { name: "黄巾起义", info: "陈胜 吴广起义爆发", start: -209 },
+      { name: "大泽乡起义", info: "陈胜 吴广起义爆发", start: -209 },
       { name: "巨鹿之战", info: "巨鹿之战", start: -207 },
       { name: "秦亡", info: "刘邦攻入咸阳", start: -206 },
     ],
