@@ -29,10 +29,10 @@ import {
   cleanNameString,
   notNull,
 } from "../../../utils/Formatter";
+import timeline from "../../../assets/data/timeline";
 
 const SPIRAL_R = 250;
 const TAIL_GAP = 50;
-const YEAR_RANGE_DEFAULT = 5000;
 const RECT_OPACITY = 0.6;
 const BLOCK_MIN_GAP = 28;
 const GROUP_LEAD_WIDTH = 6;
@@ -41,31 +41,33 @@ const SPIRAL_END = 2; // need to be even number to end at top
 const CIRCLE_R = 4.5;
 const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
 const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-const THIS_YEAR = new Date().getFullYear();
-const TIMEBUTT_END = [THIS_YEAR, "今年"];
 const ROTATE = false;
 const LINE_SIZE = 1;
 
-const TimelineSpiral = () => {
-  const start_year = THIS_YEAR; // initial starting year in limeline, running backwards to past
-  const end_year = THIS_YEAR - YEAR_RANGE_DEFAULT;
+const THIS_YEAR = new Date().getFullYear();
+const DEFAULT_TIME_HEAD = timeline.findIndex((d) => d.name === "西周"); //黄帝"); // timeline "黄帝" index
+const DEFAULT_TIME_BUTT = timeline.findIndex((d) => d.name === "今年"); // timeline "今年" index
+timeline[DEFAULT_TIME_BUTT].start = THIS_YEAR;
+const FAR_YEAR = timeline[DEFAULT_TIME_HEAD].start; // timeline "黄帝" start
+const NEAR_YEAR = THIS_YEAR; // initial starting year in limeline, running backwards to past
 
+const TimelineSpiral = () => {
   const [spiralConfig, setSpiralConfig] = useState(null);
   const [plotConfig, setPlotConfig] = useState(null);
   const [plotData, setPlotData] = useState(null);
   const [tipPosition, setTipPositioin] = useState(null);
   const [timeHeadArray, setTimeHeadArray] = useState({});
-  const [timeHead, setTimeHead] = useState("");
+  const [timeHead, setTimeHead] = useState(DEFAULT_TIME_HEAD);
   const [timeButtArray, setTimeButtArray] = useState({});
-  const [timeButt, setTimeButt] = useState("");
+  const [timeButt, setTimeButt] = useState(DEFAULT_TIME_BUTT);
 
   const [winSize, setWinSize] = useState({
     width: 500,
     height: 500,
-    shift: 250, // for shifting spiral center to this x,y so all visible
+    shift: 250, // for shifting spiral center to this x,y so plot is in view
   });
-  const [yearLimits, setYearLimits] = useState([end_year, start_year]); // year min and max
-  const [yearWindow, setYearWindow] = useState([end_year, start_year]); // current view year range
+  const [yearLimits, setYearLimits] = useState([FAR_YEAR, NEAR_YEAR]); // year min and max
+  const [yearWindow, setYearWindow] = useState([FAR_YEAR, NEAR_YEAR]); // current view year range
   const [spiralLoop, setSpiralLoops] = useState(SPIRAL_LOOP_ARRAY[1]);
   const [tailOnly, setTailOnly] = useState(false);
   const [timeMark, setTimeMark] = useState(false);
@@ -156,15 +158,13 @@ const TimelineSpiral = () => {
     };
 
     const singleIntValMap = {
-      th: { fn: setTimeHead, default: "", current: timeHead },
-      tb: { fn: setTimeButt, default: "", current: timeButt },
+      th: { fn: setTimeHead, default: DEFAULT_TIME_HEAD, current: timeHead },
+      tb: { fn: setTimeButt, default: DEFAULT_TIME_BUTT, current: timeButt },
     };
 
-    const start_year = THIS_YEAR; // initial starting year in limeline, running backwards to past
-    const end_year = THIS_YEAR - YEAR_RANGE_DEFAULT;
     const rangeMap = {
-      yl: { fn: setYearLimits, default: [end_year, start_year] },
-      yw: { fn: setYearWindow, default: [end_year, start_year] },
+      yl: { fn: setYearLimits, default: [FAR_YEAR, NEAR_YEAR] },
+      yw: { fn: setYearWindow, default: [FAR_YEAR, NEAR_YEAR] },
     };
 
     const dict = searchParamData();
@@ -190,7 +190,7 @@ const TimelineSpiral = () => {
         ? parseInt(dict[kname])
         : singleIntValMap[kname].default;
 
-      if (value !== current) fn(isNaN(value) ? "" : value);
+      if (value !== current) fn(isNaN(value) ? current : value);
     });
 
     Object.keys(rangeMap).forEach((kname) => {
@@ -236,8 +236,7 @@ const TimelineSpiral = () => {
       lookup[d.name] = { start: d.start, index: idx };
       rlookup[idx] = d.name;
     });
-    const buttArray = ordered.slice(1); //.push([THIS_YEAR, "今年"]);
-    buttArray.push(TIMEBUTT_END);
+    const buttArray = ordered.slice(timeHead + 1);
     setTimeHeadArray({ ordered, lookup, rlookup });
     setTimeButtArray({ ordered: buttArray });
 
@@ -1473,21 +1472,20 @@ const TimelineSpiral = () => {
     );
   }
 
+  // the year range slider change handlers
+  const DELAYED_SLIDE_UPDATE = false;
   const setSliderObj = (val, idx) => {
     _setSliderObj({ val, idx });
-    updateURL("yw", val);
+    if (!DELAYED_SLIDE_UPDATE) updateURL("yw", val);
   };
-  // const handleYearRangeChange = (_event, newValue, activeThumb) => {
   const handleYearRangeChange = (e, val) => {
-    // updateURL("yw", [...sliderObj.val]);
+    if (DELAYED_SLIDE_UPDATE) updateURL("yw", [...sliderObj.val]);
   };
 
   const handleTimeHeadChange = (e) => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
-    const buttObj = timeButt
-      ? timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]]
-      : null;
+    const buttObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]];
 
     // console.log(value, buttObj, order, "[THead]");
     if (buttObj && order.index >= buttObj.index) return; // range zero or crossed
@@ -1496,7 +1494,6 @@ const TimelineSpiral = () => {
     updateURL("th", order.index);
 
     const buttArray = timeHeadArray.ordered.slice(order.index + 1);
-    buttArray.push(TIMEBUTT_END);
     setTimeButtArray({
       ordered: buttArray,
     });
@@ -1507,17 +1504,10 @@ const TimelineSpiral = () => {
   const handleTimeButtChange = (e) => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
-    const headObj = timeHead
-      ? timeHeadArray.lookup[timeHeadArray.rlookup[timeHead]]
-      : null;
-    const range = [
-      headObj ? headObj.start : yearWindow[0],
-      value === TIMEBUTT_END[1]
-        ? TIMEBUTT_END[0]
-        : order
-        ? order.start
-        : yearWindow[1],
-    ];
+    const headObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeHead]];
+    const buttObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]];
+
+    const range = [headObj.start, buttObj.start];
     updateURL("tb", order ? order.index : null);
     updateURL("yl", range);
     updateURL("yw", range);
@@ -1532,18 +1522,13 @@ const TimelineSpiral = () => {
   const debugFn = () => {
     // const svg = select("svg");
     // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
-    console.info(
-      timeHead,
-      timeHeadArray.rlookup[timeHead],
-      timeButt,
-      timeButt ? timeHeadArray.rlookup[timeButt] : "NULL",
-      plotData,
-      "debugFn"
-    );
+    console.info(timeButt, timeHeadArray.rlookup[timeButt], "debugFn");
   };
   // console.info(ZOOMER, "[DEBUG] render");
 
-  const spiralCtl = (
+  //-- before rendering
+
+  const spiralCtl = plotData ? (
     <AvertaCtl
       key="spiral-ctl"
       type={TYPE_SPIRAL}
@@ -1551,8 +1536,8 @@ const TimelineSpiral = () => {
       callback={() => updateURL("tail", !tailOnly)}
       checked={!tailOnly}
     />
-  );
-  const markCtl = (
+  ) : null;
+  const markCtl = plotData ? (
     <AvertaCtl
       key="mark-ctl"
       type={TYPE_MARK}
@@ -1560,8 +1545,8 @@ const TimelineSpiral = () => {
       callback={() => updateURL("mark", !timeMark)}
       checked={timeMark}
     />
-  );
-  const scaleCtl = (
+  ) : null;
+  const scaleCtl = plotData ? (
     <AvertaCtl
       type={TYPE_SCALE}
       key="scale-ctl"
@@ -1569,8 +1554,8 @@ const TimelineSpiral = () => {
       callback={() => updateURL("unit", !timeUnit)}
       checked={timeUnit}
     />
-  );
-  const loopCtl = (
+  ) : null;
+  const loopCtl = plotData ? (
     <SelectCtl
       key="select-ctl-loop"
       label="圈数"
@@ -1578,13 +1563,13 @@ const TimelineSpiral = () => {
       valueArray={SPIRAL_LOOP_ARRAY}
       handleChange={(e) => updateURL("loops", e.target.value)}
     />
-  );
-  const loopCmp = tailOnly ? null : (
+  ) : null;
+  const loopCmp = tailOnly ? null : plotData ? (
     <Grid item xs={1}>
       {loopCtl}
     </Grid>
-  );
-  const resetBtn = (
+  ) : null;
+  const resetBtn = plotData ? (
     <AvertaCtl
       type={TYPE_RESET}
       key="reset-ctl"
@@ -1592,9 +1577,9 @@ const TimelineSpiral = () => {
       callback={handleReset}
       checked={true}
     />
-  );
+  ) : null;
 
-  const yRangeCtl = (
+  const yRangeCtl = plotData ? (
     <RangeCtl
       key="range-ctl"
       limits={yearLimits}
@@ -1603,9 +1588,9 @@ const TimelineSpiral = () => {
       handleChange={handleYearRangeChange}
       width={150}
     />
-  );
+  ) : null;
 
-  const yStartCtl = (
+  const yStartCtl = plotData ? (
     <SelectCtl
       key="select-ctl-start"
       label="起始"
@@ -1614,20 +1599,18 @@ const TimelineSpiral = () => {
       handleChange={handleTimeHeadChange}
       width={80}
     />
-  );
+  ) : null;
 
-  const yEndCtl = (
+  const yEndCtl = plotData ? (
     <SelectCtl
       key="select-ctl-end"
       label="终结"
-      value={
-        notNull(timeButt) ? timeHeadArray.rlookup[timeButt] : TIMEBUTT_END[1]
-      }
+      value={timeHeadArray.rlookup[timeButt]}
       valueArray={timeButtArray.ordered?.map((d) => d[1])}
       handleChange={handleTimeButtChange}
       width={80}
     />
-  );
+  ) : null;
 
   const controls = showControls ? (
     portrait || isMobile ? (

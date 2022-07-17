@@ -467,6 +467,10 @@ const timeline = [
       },
     ],
   },
+  {
+    name: "今年",
+    start: 2022, // will be replaced runtime
+  },
 ];
 
 export default timeline;
