@@ -97,6 +97,7 @@ const TimelineSpiral = () => {
   };
 
   const refresh = (param) => {
+    console.log(param, "[refresh]");
     //- need to reset zoom but can't save the zoom object from zoom init;
     // if (isMobile) {
     //   //- use redirect instead;
@@ -119,10 +120,8 @@ const TimelineSpiral = () => {
     // }
   };
   const updateURL = (key = null, value = null) => {
-    if (!key) {
-      refresh();
-      return;
-    }
+    if (!key) return;
+
     // console.log(key, value, "[updateURL]");
     const param = searchParams.get(key);
     if (param) {
@@ -1512,7 +1511,8 @@ const TimelineSpiral = () => {
   };
 
   const handleReset = () => {
-    updateURL();
+    const loc = window.location;
+    loc.href = `${loc.protocol}//${loc.host}${loc.pathname}`;
   };
 
   const showControls = spiralConfig && Object.keys(timeHeadArray).length > 0;
