@@ -1,4 +1,4 @@
-const events = [
+const data = [
   {
     name: "地心说",
     en: "The heliocentric model-Nicolaus Copernicus",
@@ -67,4 +67,4 @@ const events = [
   },
 ];
 
-export default events;
+export default data;

@@ -36,6 +36,7 @@
     "react-router-dom": "^6.3.0",
     "react-scripts": "^5.0.1",
     "react-spring": "^9.4.5",
+    "timelines-chart": "^2.11.5",
     "typescript": "^4.6.3"
   },
   "eslintConfig": {

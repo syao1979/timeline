@@ -1,39 +1,20 @@
-import React, { useState, useCallback } from "react";
+import React from "react";
+import data from "../../assets/data/timeline";
 
-import classes from "./Timeline.module.css";
 import Spiral from "./TimelineSpiral/TimelineSpiral";
 // import Demo from "./Demo/Demo";
 
-const data = [
-  [10, 30, 40, 20],
-  [10, 40, 30, 20, 50, 10],
-  [60, 30, 40, 20, 30],
-];
-
-// function valuetext(value) {
-//   return `${value}°C`;
-// }
-
 const Timeline = () => {
-  const size = 500;
-  const spiralConf = {
-    width: size,
-    height: size,
-    m_top: 0,
-    m_bottom: 0,
-    m_left: 0,
-    m_right: 0,
-  };
-  const lineConf = {
-    width: 800,
-    height: 150,
-    data,
-  };
+  const THIS_YEAR = new Date().getFullYear();
+  const DEFAULT_TIME_HEAD = data.findIndex((d) => d.name === "西周"); //黄帝"); // timeline "黄帝" index
+  const DEFAULT_TIME_BUTT = data.findIndex((d) => d.name === "今年"); // timeline "今年" index
+  data[DEFAULT_TIME_BUTT].start = THIS_YEAR;
+  const FAR_YEAR = data[DEFAULT_TIME_HEAD].start; // timeline "黄帝" start
+  const NEAR_YEAR = THIS_YEAR; // initial starting year in limeline, running backwards to past
 
-  const debug = false;
   return (
     <div id="timeline" style={{ margin: 10 }}>
-      <Spiral {...spiralConf} />
+      <Spiral />
     </div>
   );
 };

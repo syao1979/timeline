@@ -12,6 +12,8 @@ import OrgChart from "../GOJS/OrgChart/OrgChart";
 import GoGantt from "../GOJS/Gantt/Gantt";
 import Gantt from "../Gantt/Gantt";
 import Timeline from "../D3/Timeline";
+import TimelineChart from "../TimelineChart/TimelineChart";
+import SelectCtl from "../Controls/SelectCtl";
 
 // relation type constants
 export const SECTION_DEFAULT = "全部";
@@ -84,9 +86,6 @@ const Controller = () => {
   const handleGraphTypeChange = (e) => {
     setDisplayType(e.target.value);
   };
-  if (!nodeDataArray) {
-    return <div style={{ margin: 40 }}>Loading ... </div>;
-  }
 
   const secSelect =
     sections.length > 0
@@ -144,10 +143,16 @@ const Controller = () => {
     </div>
   );
 
-  const withControl = false;
+  const GRAPH_TYPES = ["时间线", "平行线"];
+  const [graph, setGraph] = useState(GRAPH_TYPES[0]);
+
+  const ctlType = "mini";
+
+  if (!nodeDataArray) {
+    return <div style={{ margin: 40 }}>Loading ... </div>;
+  }
   return (
     <>
-      {withControl && mainControl}
       {displayType === "Tree" ? (
         <OrgChart nodeDataArray={nodeDataArray} />
       ) : displayType === "Gantt" ? (
@@ -156,9 +161,26 @@ const Controller = () => {
         <GoGantt />
       ) : displayType === "Timeline" ? (
         <Router>
-          <Timeline />
+          {/* <TimelineChart /> */}
+          {ctlType === "mini" && graph === GRAPH_TYPES[1] ? (
+            <TimelineChart />
+          ) : (
+            <Timeline />
+          )}
         </Router>
       ) : null}
+
+      <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
+        {ctlType === "main" ? (
+          mainControl
+        ) : ctlType === "mini" ? (
+          <SelectCtl
+            value={graph}
+            valueArray={GRAPH_TYPES}
+            handleChange={(e) => setGraph(e.target.value)}
+          />
+        ) : null}
+      </div>
     </>
   );
 };

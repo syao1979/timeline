@@ -96,8 +96,6 @@ const TimelineSpiral = () => {
     return value.split(",").map((d) => parseInt(d));
   };
 
-  // const location = useLocation();
-
   const refresh = (param) => {
     //- need to reset zoom but can't save the zoom object from zoom init;
     // if (isMobile) {
@@ -1505,7 +1503,7 @@ const TimelineSpiral = () => {
     const value = e.target.value;
     const order = timeHeadArray.lookup[value];
     const headObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeHead]];
-    const buttObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]];
+    const buttObj = timeHeadArray.lookup[value];
 
     const range = [headObj.start, buttObj.start];
     updateURL("tb", order ? order.index : null);
