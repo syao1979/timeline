@@ -1034,7 +1034,7 @@ const TimelineSpiral = () => {
       const monData = data.tailBlocks.filter(
         (d) => d.group_start_year && d.data_type === "monarch"
       );
-      const VG = data.yShift + 60; // Y- gap
+      const VG = data.yShift + 100; // Y- gap
       const HG = data.xShift; // X-shift
 
       //-- monarch connect lines
