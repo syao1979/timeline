@@ -51,7 +51,7 @@ timeline[DEFAULT_TIME_BUTT].start = THIS_YEAR;
 const FAR_YEAR = timeline[DEFAULT_TIME_HEAD].start; // timeline "黄帝" start
 const NEAR_YEAR = THIS_YEAR; // initial starting year in limeline, running backwards to past
 
-const TimelineSpiral = () => {
+const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const [spiralConfig, setSpiralConfig] = useState(null);
   const [plotConfig, setPlotConfig] = useState(null);
   const [plotData, setPlotData] = useState(null);
@@ -97,27 +97,10 @@ const TimelineSpiral = () => {
   };
 
   const refresh = (param) => {
-    console.log(param, "[refresh]");
-    //- need to reset zoom but can't save the zoom object from zoom init;
-    // if (isMobile) {
-    //   //- use redirect instead;
-    //   const loc = window.location;
-    //   window.location.href = `${loc.protocol}//${loc.host}${loc.pathname}${param}`;
-    // } else {
-    if (param === undefined && zoomer) {
-      // console.log(zoomer.zoom, "[zoomer]");
-      // select("svg g")
-      //   .transition()
-      //   .duration(750)
-      //   .call(zoomer.zoom.transform, d3.zoomIdentity);
-    }
-
-    if (param === undefined) {
-      navigate("");
-    } else {
-      navigate(param);
-    }
-    // }
+    navigate({
+      pathname: window.location.pathname,
+      search: param ? param : "",
+    });
   };
   const updateURL = (key = null, value = null) => {
     if (!key) return;
@@ -1511,8 +1494,7 @@ const TimelineSpiral = () => {
   };
 
   const handleReset = () => {
-    const loc = window.location;
-    loc.href = `${loc.protocol}//${loc.host}${loc.pathname}`;
+    refresh("");
   };
 
   const showControls = spiralConfig && Object.keys(timeHeadArray).length > 0;
@@ -1623,7 +1605,7 @@ const TimelineSpiral = () => {
       />
     ) : (
       <Box sx={{ flexGrow: 1 }}>
-        <Grid container spacing={2}>
+        <Grid container spacing={2} justify="flex-end">
           <Grid item xs={2}>
             <Grid container spacing={1}>
               <Grid item xs={3}>
@@ -1664,6 +1646,25 @@ const TimelineSpiral = () => {
                 Debug
               </Button>
             ) : null}
+          </Grid>
+          <Grid
+            item
+            xs={4}
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+            }}
+          >
+            <Button
+              // variant="outlined"
+              // color="error"
+              size="small"
+              onClick={changePlot}
+              style={{ marginLeft: 40 }}
+            >
+              {changePlotLabel}
+            </Button>
           </Grid>
         </Grid>
       </Box>

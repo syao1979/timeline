@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import TimelinesChart from "timelines-chart";
 import { select } from "d3";
+import Button from "@mui/material/Button";
+import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
 
 import timelineData from "../../assets/data/timeline";
 import monarch from "../../assets/data/monarch";
@@ -14,7 +17,7 @@ Refs:
     https://www.npmjs.com/package/timelines-chart?activeTab=readme
     https://github.com/vasturiano/timelines-chart/tree/master/src
  */
-const TimelineChart = () => {
+const TimelineChart = ({ changePlot, changePlotLabel }) => {
   const [tData, setTData] = useState(null);
   const [gList, setGList] = useState(null);
   const [gID, setGID] = useState(null);
@@ -209,18 +212,39 @@ const TimelineChart = () => {
   }, [gList, gID]);
 
   return (
-    <>
+    <div style={{ padding: 20 }}>
       <div style={{ margin: 10 }} id="chart" ref={ref} />
       {gList && gID !== null ? (
-        <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
-          <SelectCtl
-            value={gList[gID]}
-            valueArray={gList}
-            handleChange={(e) => setGID(gList.indexOf(e.target.value))}
-          />
-        </div>
+        <Box sx={{ flexGrow: 1 }}>
+          <Grid container spacing={2} justify="flex-end">
+            <Grid item xs={2}>
+              <SelectCtl
+                value={gList[gID]}
+                valueArray={gList}
+                handleChange={(e) => setGID(gList.indexOf(e.target.value))}
+              />
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+              }}
+            >
+              <Button
+                size="small"
+                onClick={changePlot}
+                style={{ marginLeft: 40 }}
+              >
+                {changePlotLabel}
+              </Button>
+            </Grid>
+          </Grid>
+        </Box>
       ) : null}
-    </>
+    </div>
   );
 };
 

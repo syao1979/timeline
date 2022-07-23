@@ -163,14 +163,20 @@ const Controller = () => {
         <Router>
           {/* <TimelineChart /> */}
           {ctlType === "mini" && graph === GRAPH_TYPES[1] ? (
-            <TimelineChart />
+            <TimelineChart
+              changePlot={() => setGraph(GRAPH_TYPES[0])}
+              changePlotLabel={GRAPH_TYPES[0]}
+            />
           ) : (
-            <Timeline />
+            <Timeline
+              changePlot={() => setGraph(GRAPH_TYPES[1])}
+              changePlotLabel={GRAPH_TYPES[1]}
+            />
           )}
         </Router>
       ) : null}
 
-      <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
+      {/* <div style={{ display: "flex", width: "auto", alignItems: "center" }}>
         {ctlType === "main" ? (
           mainControl
         ) : ctlType === "mini" ? (
@@ -180,7 +186,7 @@ const Controller = () => {
             handleChange={(e) => setGraph(e.target.value)}
           />
         ) : null}
-      </div>
+      </div> */}
     </>
   );
 };

@@ -4,7 +4,7 @@ import data from "../../assets/data/timeline";
 import Spiral from "./TimelineSpiral/TimelineSpiral";
 // import Demo from "./Demo/Demo";
 
-const Timeline = () => {
+const Timeline = (props) => {
   const THIS_YEAR = new Date().getFullYear();
   const DEFAULT_TIME_HEAD = data.findIndex((d) => d.name === "西周"); //黄帝"); // timeline "黄帝" index
   const DEFAULT_TIME_BUTT = data.findIndex((d) => d.name === "今年"); // timeline "今年" index
@@ -14,7 +14,7 @@ const Timeline = () => {
 
   return (
     <div id="timeline" style={{ margin: 10 }}>
-      <Spiral />
+      <Spiral {...props} />
     </div>
   );
 };
