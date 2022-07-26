@@ -29,7 +29,7 @@ const normalizeYear = (year, numOnly = false) => {
   const QIANWAN = 10000000;
   const YI = 100000000;
 
-  let value = Math.abs(year);
+  let value = parseInt(Math.abs(year));
   const pre = !numOnly && year < 0 && value < WAN ? "前" : "";
   const post = !numOnly && year < 0 && value >= WAN ? "前" : "";
   let unit = "年";

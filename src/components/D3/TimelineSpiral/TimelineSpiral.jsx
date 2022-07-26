@@ -523,17 +523,18 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         // optional monarch, in case the monarch list overflow onto tail
         tailExtraDataList(
           monarch[d.name]?.filter((d) => d.start),
-          "monarch"
+          "monarch",
+          d.name
         );
       }
     };
 
-    const tailExtraDataList = (list, dtype = "event") => {
+    const tailExtraDataList = (list, dtype = "event", label = null) => {
       const oData = [];
       if (!list) return oData;
 
       const addToList = (d) => {
-        const { block } = oneTailBlockLeader(d, dtype);
+        const { block } = oneTailBlockLeader(d, dtype, label);
         if (block) oData.push(block);
       };
 
@@ -544,7 +545,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       });
       return oData;
     };
-    const oneTailBlockLeader = (d, dtype = null) => {
+    const oneTailBlockLeader = (d, dtype = null, label = null) => {
       //- start and end pixel
       const spixel = tailTimeScale(d.start); // pixel == 0 is the spiral / tail joint point
       let epixel = null;
@@ -565,6 +566,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         end: anchor,
         data_type: dtype,
         group: d.name,
+        label,
         group_leader: true,
         group_start_year: d.start,
         group_end_year: d.end,
@@ -581,7 +583,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         // optional monarch
         tailExtraDataList(
           monarch[d.name]?.filter((d) => d.start),
-          "monarch"
+          "monarch",
+          d.name
         );
       };
 
@@ -947,7 +950,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     }
 
     //-- draw leader AND event label on tail line, skip is too close to previous leader
-    const GAP_SIZE = 6;
+    const GAP_SIZE = 10;
     if (data.tailBlocks.length > 0) {
       let lastLeader = null;
       select("g")
@@ -996,17 +999,16 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .style("text-anchor", "start")
         .style("font", "10px arial")
         .text((d) => {
-          const delta = lastEvent ? Math.abs(d.x - lastEvent.x) : GAP_SIZE + 1;
-          const label = delta > GAP_SIZE ? d.group : "";
-
-          lastEvent = d;
+          const delta = lastEvent ? Math.abs(d.x - lastEvent.x) : null;
+          const label = !delta || delta > GAP_SIZE ? d.group : "";
+          if (label) lastEvent = d;
           return label;
         })
         .attr(
           "transform",
           (d) =>
             `translate(${d.x + data.xShift + 4},${
-              d.y + data.yShift - 10
+              d.y + data.yShift - 4
             }) rotate(-90)`
           // rotate the text
         );
@@ -1017,17 +1019,27 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       const monData = data.tailBlocks.filter(
         (d) => d.group_start_year && d.data_type === "monarch"
       );
-      const VG = data.yShift + 100; // Y- gap
+      const VG = (data.lastY ? data.lastY : data.yShift) + 80; // Y- gap
       const HG = data.xShift; // X-shift
+      data.lastY = VG; // will be used by next row data
 
       //-- monarch connect lines
       const connData = [];
       monData.forEach((d) => {
+        const label = d.label;
         let x1 = d.start + HG;
         let x2 = d.end + HG;
         let y1 = d.y + VG;
-        connData.push({ ...d, x1, y1, x2, y2: y1 }); // from d.start to d.end line
-        connData.push({ ...d, x1, y1, x2: x1, y2: y1 - 10, type: "bar" }); // from d.start upwards of 10 pixel
+        connData.push({ ...d, x1, y1, x2, y2: y1, label }); // from d.start to d.end line
+        connData.push({
+          ...d,
+          x1,
+          y1,
+          x2: x1,
+          y2: y1 - 10,
+          type: "bar",
+          label,
+        }); // from d.start upwards of 10 pixel
       });
 
       select("g")
@@ -1038,7 +1050,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .attr("class", (d) =>
           d.type === "bar" ? "monarch-bar" : "monarch-connect"
         )
-        .style("stroke", "steelblue")
+        .style("stroke", (d) => groupColor(d.label))
         .style("stroke-width", 2)
         .attr("x1", (d) => d.x1)
         .attr("y1", (d) => d.y1)
@@ -1054,15 +1066,13 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .append("text")
         .attr("class", "monarch-label")
         .style("text-anchor", "end")
-        .style("font", "12px arial")
+        .style("font", "10px arial")
         .attr("font-weight", "bold")
         .text((d) => {
-          const delta = lastLeader
-            ? Math.abs(d.x - lastLeader.x)
-            : GAP_SIZE + 1;
-          const label = delta > GAP_SIZE ? d.group : "";
+          const delta = lastLeader ? Math.abs(d.x - lastLeader.x) : null;
+          const label = !delta || delta > GAP_SIZE + 4 ? d.group : "";
           // console.log(d, d.start.toFixed(0), d.end.toFixed(0), "[monarch]");
-          lastLeader = d;
+          if (label) lastLeader = d;
           return label;
         })
         .attr(
@@ -1077,8 +1087,15 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       const sData = data.tailBlocks.filter(
         (d) => d.group_start_year && d.data_type === "science"
       );
-      const VG = data.yShift + 2; // Y- gap
+      const yPos0 = data.yShift + 2; // vertical line Y- gap to main timeline
       const HG = data.xShift; // X-shift
+      const labelY = (data.lastY ? data.lastY : data.yShift) + 80; // label shifted down 100px from last line
+      let lastLeader = null;
+      const stagerShift = 40;
+      const doShift = (xval) => {
+        const delta = lastLeader ? Math.abs(xval - lastLeader.x) : null;
+        return !delta || delta > GAP_SIZE;
+      };
 
       //--  connect lines
       select("g")
@@ -1091,25 +1108,16 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .style("stroke-dasharray", "3, 3")
         .style("stroke-width", 1)
         .attr("x1", (d) => d.x + HG)
-        .attr("y1", (d) => d.y + VG + 8)
+        .attr("y1", (d) => d.y + yPos0)
         .attr("x2", (d) => d.x + HG)
-        .attr("y2", (d) => d.y + VG + 18);
+        .attr("y2", (d) => {
+          const shift = doShift(d.x);
+          if (shift) lastLeader = d;
+          return d.y + labelY - 2 + (!shift ? stagerShift : 0);
+        });
 
       //-- scinece  circle
-      let lastLeader = null;
-      // select("g")
-      //   .selectAll(".tail-science-circle")
-      //   .data(sData)
-      //   .enter()
-      //   .append("circle")
-      //   .attr("class", "tail-science-circle")
-      //   .attr("cx", (d) => d.x + HG)
-      //   .attr("cy", (d) => d.y + VG) // move down to align with tail bar
-      //   .attr("r", (_, i) => 4)
-      //   .style("fill", (d) => "#000")
-      //   .attr("stroke", (d) => "#000");
-      // .style("opacity", 0.5);
-
+      lastLeader = null;
       select("g")
         .selectAll(".tail-science-label")
         .data(sData)
@@ -1117,20 +1125,26 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .append("text")
         .attr("class", "tail-science-label")
         .style("text-anchor", "end")
-        .style("font", "12px arial")
+        .style("font", "10px arial")
         .attr("font-weight", "bold")
         .text((d) => {
-          const delta = lastLeader
-            ? Math.abs(d.x - lastLeader.x)
-            : GAP_SIZE + 1;
-          const label = delta > GAP_SIZE ? d.group : "";
-          // console.log(d, d.start.toFixed(0), d.end.toFixed(0), "[monarch]");
-          lastLeader = d;
-          return label;
+          return d.group;
+          // const delta = lastLeader ? Math.abs(d.x - lastLeader.x) : null;
+          // const label = !delta || delta > GAP_SIZE ? d.group : "";
+          // // console.log(d, d.start.toFixed(0), d.end.toFixed(0), "[monarch]");
+          // if (label) lastLeader = d;
+          // return label;
         })
         .attr(
           "transform",
-          (d) => `translate(${d.x + HG + 4},${d.y + VG + 20}) rotate(-90)`
+          (d) => {
+            const x0 = d.x + HG + 4; // so text aligns with time mark
+            // const delta = lastLeader ? Math.abs(d.x - lastLeader.x) : null;
+            const shift = doShift(d.x); //!delta || delta > GAP_SIZE;
+            const y0 = shift ? d.y + labelY : d.y + labelY + stagerShift;
+            if (shift) lastLeader = d;
+            return `translate(${x0},${y0}) rotate(-90)`;
+          }
           // rotate the text
         );
     }
@@ -1441,29 +1455,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       });
   };
 
-  //-- event handlers
-  function zoomHandler(e) {
-    select("svg g").attr(
-      "transform",
-      // `${e.transform} translate(${SPIRAL_R}, ${SPIRAL_R})`
-      `${e.transform} rotate(${
-        ROTATE && portrait ? 90 : 0
-      }) translate(${SPIRAL_R}, ${ROTATE && portrait ? -SPIRAL_R : SPIRAL_R})`
-    );
-  }
-
-  // the year range slider change handlers
-  const DELAYED_SLIDE_UPDATE = false;
-  const setSliderObj = (val, idx) => {
-    _setSliderObj({ val, idx });
-    if (!DELAYED_SLIDE_UPDATE) updateURL("yw", val);
-  };
-  const handleYearRangeChange = (e, val) => {
-    if (DELAYED_SLIDE_UPDATE) updateURL("yw", [...sliderObj.val]);
-  };
-
-  const handleTimeHeadChange = (e) => {
-    const value = e.target.value;
+  const updateTimeHead = (value) => {
     const order = timeHeadArray.lookup[value];
     const buttObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]];
 
@@ -1480,6 +1472,46 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     updateURL("yl", range);
     updateURL("yw", range);
   };
+  //-- event handlers
+  const zoomHandler = (e) => {
+    select("svg g").attr(
+      "transform",
+      // `${e.transform} translate(${SPIRAL_R}, ${SPIRAL_R})`
+      `${e.transform} rotate(${
+        ROTATE && portrait ? 90 : 0
+      }) translate(${SPIRAL_R}, ${ROTATE && portrait ? -SPIRAL_R : SPIRAL_R})`
+    );
+  };
+
+  // the year range slider change handlers
+  const DELAYED_SLIDE_UPDATE = false;
+  const setSliderObj = (val, idx) => {
+    _setSliderObj({ val, idx });
+    if (!DELAYED_SLIDE_UPDATE) updateURL("yw", val);
+  };
+  const handleYearRangeChange = (e, val) => {
+    if (DELAYED_SLIDE_UPDATE) updateURL("yw", [...sliderObj.val]);
+  };
+
+  const handleTimeHeadChange = (e) => {
+    updateTimeHead(e.target.value);
+    // const value = e.target.value;
+    // const order = timeHeadArray.lookup[value];
+    // const buttObj = timeHeadArray.lookup[timeHeadArray.rlookup[timeButt]];
+
+    // // console.log(value, buttObj, order, "[THead]");
+    // if (buttObj && order.index >= buttObj.index) return; // range zero or crossed
+
+    // const range = [order.start, buttObj ? buttObj.start : yearWindow[1]];
+    // updateURL("th", order.index);
+
+    // const buttArray = timeHeadArray.ordered.slice(order.index + 1);
+    // setTimeButtArray({
+    //   ordered: buttArray,
+    // });
+    // updateURL("yl", range);
+    // updateURL("yw", range);
+  };
 
   const handleTimeButtChange = (e) => {
     const value = e.target.value;
@@ -1494,6 +1526,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   };
 
   const handleReset = () => {
+    updateTimeHead(timeHeadArray.rlookup[DEFAULT_TIME_HEAD]);
     refresh("");
   };
 
@@ -1502,7 +1535,12 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const debugFn = () => {
     // const svg = select("svg");
     // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
-    console.info(timeButt, timeHeadArray.rlookup[timeButt], "debugFn");
+    console.info(
+      plotData,
+      DEFAULT_TIME_HEAD,
+      timeHeadArray.rlookup[DEFAULT_TIME_HEAD],
+      "debugFn"
+    );
   };
   // console.info(ZOOMER, "[DEBUG] render");
 

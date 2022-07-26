@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import TimelinesChart from "timelines-chart";
-import { select } from "d3";
+import { select, selectAll } from "d3";
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
@@ -176,6 +176,9 @@ const TimelineChart = ({ changePlot, changePlotLabel }) => {
   const handleLabelClick = (a, b) => {
     console.log(a, b, "[handleLabelClick}");
   };
+  const handleSegmentClick = (d) => {
+    console.log(d, "[segment]");
+  };
   useEffect(() => {
     if (gList && gID !== null) {
       //   console.log(JSON.stringify(flatData), "[flatData]");
@@ -188,7 +191,9 @@ const TimelineChart = ({ changePlot, changePlotLabel }) => {
         // .enableOverview(false)
         .onLabelClick(handleLabelClick)
         .segmentTooltipContent(toolTip)
-        .dateMarker(false);
+        .onSegmentClick(handleSegmentClick)
+        .dateMarker(false)
+        .maxLineHeight(16); // line height
 
       //- legend
       select(".legendG").remove(); // top legend, too many
@@ -208,6 +213,11 @@ const TimelineChart = ({ changePlot, changePlotLabel }) => {
       //     chartRef.current.getVisibleStructure(),
       //     "[getVisibleStructure]"
       //   );
+
+      selectAll(".series-segment").each((d) => {
+        //   selectAll("rect").each((d) => {
+        console.log(d, "[segment]");
+      });
     }
   }, [gList, gID]);
 
