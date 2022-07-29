@@ -67,7 +67,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     width: 500,
     height: 500,
     x0: 220,
-    y0: 250,
+    y0: 300,
   });
   const [yearLimits, setYearLimits] = useState([FAR_YEAR, NEAR_YEAR]); // year min and max
   const [yearWindow, setYearWindow] = useState([FAR_YEAR, NEAR_YEAR]); // current view year range
@@ -224,8 +224,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     const handleResize = () => {
       const width = window.innerWidth - BODY_PADDING * 2; // offset the doc padding
       const height = window.innerHeight;
-      const y0 = 0.5 * Math.min(window.innerWidth, window.innerHeight);
-      setWinSize({ ...winSize, width, height, y0 });
+      // const y0 = 0.5 * Math.min(window.innerWidth, window.innerHeight);
+      setWinSize({ ...winSize, width, height });
       setPortrait(width / height < 0.8);
     };
     handleResize();
