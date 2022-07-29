@@ -7,7 +7,7 @@ import "./App.css";
 
 const App = () => {
   return (
-    <div id="app-container" style={{ border: "solid 1px", margin: 10 }}>
+    <div id="app-container" style={{ border: "solid 1px" }}>
       <Controller />
     </div>
   );

@@ -13,7 +13,7 @@ const Timeline = (props) => {
   const NEAR_YEAR = THIS_YEAR; // initial starting year in limeline, running backwards to past
 
   return (
-    <div id="timeline" style={{ margin: 10 }}>
+    <div id="timeline">
       <Spiral {...props} />
     </div>
   );

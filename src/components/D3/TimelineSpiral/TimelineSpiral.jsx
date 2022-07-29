@@ -31,16 +31,18 @@ import {
 } from "../../../utils/Formatter";
 import timeline from "../../../assets/data/timeline";
 
+const BODY_PADDING = 9; // document has this padding that affects the topmost div
 const SPIRAL_R = 250;
-const TAIL_GAP = 50;
+const SPIRAL_START = 0;
+const SPIRAL_END = 2; // need to be even number to end at top
+const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+const TAIL_GAP = 20; //tail left/right gap to svg rect
 const RECT_OPACITY = 0.6;
 const BLOCK_MIN_GAP = 28;
 const GROUP_LEAD_WIDTH = 6;
-const SPIRAL_START = 0;
-const SPIRAL_END = 2; // need to be even number to end at top
 const CIRCLE_R = 4.5;
 const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
-const SPIRAL_LOOP_ARRAY = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const ROTATE = false;
 const LINE_SIZE = 1;
 
@@ -64,7 +66,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const [winSize, setWinSize] = useState({
     width: 500,
     height: 500,
-    shift: 250, // for shifting spiral center to this x,y so plot is in view
+    x0: 220,
+    y0: 250,
   });
   const [yearLimits, setYearLimits] = useState([FAR_YEAR, NEAR_YEAR]); // year min and max
   const [yearWindow, setYearWindow] = useState([FAR_YEAR, NEAR_YEAR]); // current view year range
@@ -79,9 +82,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const [portrait, setPortrait] = useState(false);
   const containerRef = useRef(null);
 
-  const tailLength = () => {
-    return winSize.width - winSize.shift - TAIL_GAP;
-  };
+  const tailLength = () =>
+    winSize.width - TAIL_GAP - (tailOnly ? TAIL_GAP : winSize.x0);
 
   const searchParamData = () => {
     const dict = {};
@@ -186,10 +188,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     const zoom = d3
       .zoom()
       .scaleExtent([0.5, 4]) // do not zoom too small or too large
-      // .translateExtent([
-      //   [-winSize.shift, -winSize.shift],
-      //   [400, 400],
-      // ])
       .on("zoom", zoomHandler)
       .on("start", function (e) {
         // buttons === 1 when 3 finger down (for zooming)
@@ -224,13 +222,11 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
 
     // window resize listener
     const handleResize = () => {
-      const width = window.innerWidth;
+      const width = window.innerWidth - BODY_PADDING * 2; // offset the doc padding
       const height = window.innerHeight;
-      const shift = 0.5 * Math.min(window.innerWidth, window.innerHeight);
-      setWinSize({ width, height, shift });
+      const y0 = 0.5 * Math.min(window.innerWidth, window.innerHeight);
+      setWinSize({ ...winSize, width, height, y0 });
       setPortrait(width / height < 0.8);
-
-      // console.log((width / height).toFixed(2), "[handleResize]");
     };
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -271,15 +267,14 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     if (!spiralConfig) return;
 
     select("g").selectAll("*").remove(); // clear all elements - for redraw
-    // select("g").attr("transform", `translate(${SPIRAL_R}, ${SPIRAL_R})`);
     select("g").attr(
       "transform",
-      `rotate(${ROTATE && portrait ? 90 : 0}) translate(${SPIRAL_R}, ${
-        ROTATE && portrait ? -SPIRAL_R : SPIRAL_R
+      `rotate(${ROTATE && portrait ? 90 : 0}) translate(${winSize.x0}, ${
+        ROTATE && portrait ? -winSize.y0 : winSize.y0
       })`
     );
     select("svg")
-      .style("width", SPIRAL_R + tailLength() + TAIL_GAP)
+      .style("width", winSize.width)
       .style("height", SPIRAL_R * 2);
 
     let spiralLen = 0;
@@ -296,7 +291,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       spiralLen = path.node().getTotalLength();
     }
 
-    const tailLen = tailOnly ? SPIRAL_R + tailLength() : tailLength();
+    const tailLen = tailLength(); //tailOnly ? SPIRAL_R + tailLength() : tailLength();
     const partition = partitionYear(
       yearWindow[1] - yearWindow[0],
       spiralLen,
@@ -460,6 +455,13 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       : { x: 0, y: -200 };
   };
 
+  const tailYearToPixelScaler = () => {
+    return d3
+      .scaleLinear()
+      .domain([yearWindow[1] - plotConfig.tailYearTotal, yearWindow[1]]) // tail year range
+      .range([0, plotConfig.tailLen]); // tail pixel range
+  };
+
   const buildData = (verbose = false) => {
     const spiralLen = plotConfig.spiralLen;
     const path = plotConfig.path;
@@ -469,10 +471,11 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
 
     const spiralBlocks = []; // the spiral block data
     const tailBlocks = [];
-    const tailTimeScale = d3
-      .scaleLinear()
-      .domain([yearWindow[1] - plotConfig.tailYearTotal, yearWindow[1]]) // tail year range
-      .range([0, plotConfig.tailLen]); // tail pixel range
+    const tailTimeScale = tailYearToPixelScaler();
+    // const tailTimeScale = d3
+    //   .scaleLinear()
+    //   .domain([yearWindow[1] - plotConfig.tailYearTotal, yearWindow[1]]) // tail year range
+    //   .range([0, plotConfig.tailLen]); // tail pixel range
 
     const spiralExtraDataList = (list) => {
       const leftover = []; // spiral overflow onto tail
@@ -643,8 +646,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       yearMarks: buildYearMarks(),
       sYearMax,
       sYearMin: yearWindow[0],
-      xShift: tailOnly ? -(SPIRAL_R - 20) : 0,
-      yShift: tailOnly ? 50 : 0,
+      xShift: tailOnly ? -(winSize.x0 - TAIL_GAP) : 0, // tail abs x shift: ontop of global shift to leave 20 gap for tailOnly
+      yShift: tailOnly ? 50 : 0, // abs y shift
     };
   };
 
@@ -888,6 +891,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     let lastGroup = null;
     let lastY = null;
     const avoidGroupOverlap = false;
+    const tailTimeScale = tailYearToPixelScaler();
+    const yearMaxPos = tailTimeScale(yearWindow[1]); // max pixel
 
     // draw the rect on tail line
     const RECT_HEIGHT = 4;
@@ -1082,10 +1087,17 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         );
     }
 
-    //-- tail scinece label
+    const notTooCloseToMax = (yearVal) => {
+      return tailTimeScale(yearVal) < yearMaxPos - 6;
+    };
+
+    //-- tail scinece vertical line and label
     if (data.tailBlocks.length > 0) {
       const sData = data.tailBlocks.filter(
-        (d) => d.group_start_year && d.data_type === "science"
+        (d) =>
+          d.group_start_year &&
+          d.data_type === "science" &&
+          notTooCloseToMax(d.group_start_year)
       );
       const yPos0 = data.yShift + 2; // vertical line Y- gap to main timeline
       const HG = data.xShift; // X-shift
@@ -1116,8 +1128,10 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           return d.y + labelY - 2 + (!shift ? stagerShift : 0);
         });
 
-      //-- scinece  circle
+      //-- scinece  label
+      // let preLastLeader = null;
       lastLeader = null;
+
       select("g")
         .selectAll(".tail-science-label")
         .data(sData)
@@ -1140,9 +1154,12 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           (d) => {
             const x0 = d.x + HG + 4; // so text aligns with time mark
             // const delta = lastLeader ? Math.abs(d.x - lastLeader.x) : null;
-            const shift = doShift(d.x); //!delta || delta > GAP_SIZE;
+            const shift = doShift(d.x);
             const y0 = shift ? d.y + labelY : d.y + labelY + stagerShift;
-            if (shift) lastLeader = d;
+            if (shift) {
+              // preLastLeader = lastLeader;
+              lastLeader = d;
+            }
             return `translate(${x0},${y0}) rotate(-90)`;
           }
           // rotate the text
@@ -1535,12 +1552,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const debugFn = () => {
     // const svg = select("svg");
     // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
-    console.info(
-      plotData,
-      DEFAULT_TIME_HEAD,
-      timeHeadArray.rlookup[DEFAULT_TIME_HEAD],
-      "debugFn"
-    );
+    console.info(plotData, tailLength(), winSize, "debugFn");
   };
   // console.info(ZOOMER, "[DEBUG] render");
 
