@@ -44,7 +44,10 @@ const GROUP_LEAD_WIDTH = 6;
 const CIRCLE_R = 4.5;
 const groupColor = d3.scaleOrdinal(d3.schemeCategory10); // used to assign nodes color by group
 const ROTATE = false;
+
+// plot consts
 const LINE_SIZE = 1;
+const GAP_SIZE = 10;
 
 const THIS_YEAR = new Date().getFullYear();
 const DEFAULT_TIME_HEAD = timeline.findIndex((d) => d.name === "西周"); //黄帝"); // timeline "黄帝" index
@@ -58,6 +61,9 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const [plotConfig, setPlotConfig] = useState(null);
   const [plotData, setPlotData] = useState(null);
   const [tipPosition, setTipPositioin] = useState(null);
+  const [monarchY, setMonarchY] = useState(null);
+  const [sciY, setSciY] = useState(null);
+
   const [timeHeadArray, setTimeHeadArray] = useState({});
   const [timeHead, setTimeHead] = useState(DEFAULT_TIME_HEAD);
   const [timeButtArray, setTimeButtArray] = useState({});
@@ -363,8 +369,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     drawTimeMarks();
     drawTips();
     drawScale();
-    // drawReference(100);
-    // testLabel();
   };
 
   const testLabel = (text = "Test Label") => {
@@ -652,6 +656,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
 
     let lastTailEventX = null;
     const MIN_EVENT_DIST = 8; // skip next event if it is closer than 4 pixels from previous collected one
+    // const testList = ["元和国计簿", "日僧空海抵长安", "牛李党争"];
     tailEventList.forEach((d) => {
       d.data_type = "event";
       const blkData = getOneTailBlock(d, false);
@@ -662,6 +667,15 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           const delta = Math.abs(blkData.x - lastTailEventX);
           if (delta > 0 && delta < MIN_EVENT_DIST) keep = false;
         }
+        // if (testList.includes(d.name)) {
+        //   console.log(
+        //     d.name,
+        //     lastTailEventX.toFixed(0),
+        //     blkData.x.toFixed(0),
+        //     keep,
+        //     "[events]"
+        //   );
+        // }
         if (keep) {
           tailEventBlocks.push(blkData);
           lastTailEventX = blkData.x;
@@ -916,7 +930,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     const yearMaxPos = tailTimeScale(yearWindow[1]); // max pixel
 
     const RECT_HEIGHT = 4;
-    const GAP_SIZE = 10;
 
     // main tail data
     if (data.tailBlocks.length > 0) {
@@ -989,6 +1002,18 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     }
 
     // event data on tail
+    drawTailEvents();
+
+    //-- tail monarch label and connect time
+    drawTailMonarch();
+
+    //-- tail scinece vertical line and label
+    drawTailSci();
+  };
+
+  const drawTailEvents = () => {
+    const data = plotData;
+    // event data on tail
     if (data.tailEventBlocks.length > 0) {
       // event circle
       select("g")
@@ -1032,11 +1057,19 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           // rotate the text
         );
     }
+  };
+
+  const drawTailMonarch = () => {
+    const data = plotData;
+    // VG/HG : vertial and horizontal global shift
+    const VG = monarchY
+      ? monarchY
+      : (data.lastY ? data.lastY : data.yShift) + 80; // Y- gap
+    if (VG !== monarchY) setMonarchY(VG);
+    const HG = data.xShift; // X-shift
 
     //-- tail monarch label and connect time
     if (data.tailMonarchBlocks.length > 0) {
-      const VG = (data.lastY ? data.lastY : data.yShift) + 80; // Y- gap
-      const HG = data.xShift; // X-shift
       data.lastY = VG; // will be used by next row data
 
       const monData = data.tailMonarchBlocks;
@@ -1082,6 +1115,9 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .data(monData)
         .enter()
         .append("text")
+        // .attr("x", (d) => d.x + HG + 4)
+        // .attr("y", (d) => d.y + VG + 2)
+
         .attr("class", "monarch-label")
         .style("text-anchor", "end")
         .style("font", "10px arial")
@@ -1099,13 +1135,19 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           // rotate the text
         );
     }
+  };
 
-    //-- tail scinece vertical line and label
+  const drawTailSci = () => {
+    const data = plotData;
     if (data.tailScienceBlocks.length > 0) {
       const sData = data.tailScienceBlocks;
       const yPos0 = data.yShift + 2; // vertical line Y- gap to main timeline
+      // VG/HG : vertial and horizontal global shift
+      const VG = sciY ? sciY : (data.lastY ? data.lastY : data.yShift) + 80; // label shifted down 100px from last line
       const HG = data.xShift; // X-shift
-      const labelY = (data.lastY ? data.lastY : data.yShift) + 80; // label shifted down 100px from last line
+      if (VG !== sciY) setSciY(VG);
+      const labelY = VG;
+
       let lastLeader = null;
       const stagerShift = 40;
       const doShift = (xval) => {
@@ -1164,7 +1206,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         );
     }
   };
-
   const drawTimeMarks = () => {
     if (!timeMark) return;
     const spiralLen = plotConfig.spiralLen;
@@ -1299,8 +1340,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const drawScale = () => {
     if (!timeUnit) return;
 
-    const x0 = -220;
-    const y0 = 200; // // -230; // top-left corner
+    const x0 = -210;
+    const y0 = -285; // top-left corner
     const h = -4;
     const yunit = yearMarkUnit();
     const len = plotConfig.pixPerYear * yunit;
@@ -1343,7 +1384,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       {
         x: x0 + 4,
         y: y0 + 24,
-        text: `[total ${normalizeYear(ymax - ymin)}]`,
+        text: `[共 ${normalizeYear(ymax - ymin)}]`,
       },
     ];
 
@@ -1435,6 +1476,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       }
     }
 
+    const DEBUG = true;
+    if (DEBUG) text += `; x=${d.x.toFixed(0)}`;
     setTipPositioin([
       x,
       y,
@@ -1548,6 +1591,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const showControls = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
   const debugFn = () => {
+    drawTimeMarks();
     console.info(
       plotData.tailBlocks,
       plotData.spiralBlocks,
