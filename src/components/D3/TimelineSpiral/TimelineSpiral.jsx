@@ -606,11 +606,22 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     }
 
     // collect scince data
+    let lastSciBlkX = null;
     const tailScienceBlocks = [];
     science.forEach((d) => {
       d.data_type = "science";
       const blkData = getOneTailBlock(d, false);
-      if (blkData) tailScienceBlocks.push(blkData);
+      if (blkData) {
+        let keep = true;
+        if (lastSciBlkX) {
+          const delta = Math.abs(blkData.x - lastSciBlkX);
+          if (delta > 0 && delta < 4) keep = false;
+        }
+        if (keep) {
+          tailScienceBlocks.push(blkData);
+          lastSciBlkX = blkData.x;
+        }
+      }
     });
 
     //--
