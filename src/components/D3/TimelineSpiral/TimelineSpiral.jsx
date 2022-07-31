@@ -479,84 +479,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     let tailEventBlocks = [];
     let tailMonarchBlocks = [];
 
-    const oneSpiralBlock = (d, dtype = null) => {
-      if (!tailOnly && d.start >= yearWindow[0]) {
-        // data on spiral
-        const pos = year2pixelPositionOnSpiral(
-          d.start,
-          yearWindow[0],
-          sYearMax,
-          spiralLen,
-          path
-        );
-
-        const block = {
-          spiral: true,
-          data_type: dtype,
-          info: d.info,
-          ...pos,
-          group: d.name,
-          group_start_year: d.start,
-          group_end_year: d.end,
-          linePer: pos.linePer, // for group leader labelling - use the prevous block's coordinate
-        };
-        spiralBlocks.push(block);
-      }
-    };
-
-    const tailExtraDataList = (list, dtype = "event", label = null) => {
-      const oData = [];
-      if (!list) return oData;
-
-      const addToList = (d) => {
-        const { block } = oneTailBlockLeader(d, dtype, label);
-        if (block) oData.push(block);
-      };
-
-      list.forEach((d) => {
-        if (d.start >= sYearMax && d.start <= yearWindow[1]) {
-          addToList(d);
-        }
-      });
-      return oData;
-    };
-    const oneTailBlockLeader = (d, dtype = null, label = null) => {
-      //- start and end pixel
-      const spixel = tailTimeScale(d.start); // pixel == 0 is the spiral / tail joint point
-      let epixel = null;
-      if (!dtype || dtype === "monarch") {
-        const end = d.end === d.start ? d.start + 0.1 : d.end; // same start and end causes wrong epixel
-        epixel = tailTimeScale(end);
-        if (!epixel || epixel > plotConfig.tailLen) {
-          epixel = tailTimeScale(yearWindow[1]);
-        }
-      }
-
-      const anchor = dtype ? epixel : spixel + GROUP_LEAD_WIDTH; // group leading block width
-
-      const block = {
-        x: spixel,
-        y: tailY,
-        data_type: dtype,
-        group: d.name,
-        group_start_year: d.start,
-        info: d.info,
-      };
-      if (!dtype || dtype === "monarch") {
-        block.end = anchor;
-        if (!dtype) {
-          block.group_end_year = d.end;
-          block.group_leader = true;
-        } else {
-          block.label = label;
-        }
-      }
-      tailBlocks.push(block);
-      return { block, anchor, epixel };
-    };
-
-    // new version
-    const addOneTailBlock = (d, range = true) => {
+    const getOneTailBlock = (d, range = true) => {
       if (!(d.start >= sYearMax && d.start <= yearWindow[1])) return null;
 
       //- start and end pixel
@@ -590,7 +513,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       }
       return block;
     };
-    const addOneSpiralBlock = (d, range = true) => {
+    const getOneSpiralBlock = (d, range = true) => {
       if (!tailOnly && d.start >= yearWindow[0] && d.start <= sYearMax) {
         // data on spiral
         const { x, y, linePer, a } = year2pixelPositionOnSpiral(
@@ -615,7 +538,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         if (range) {
           if (!d.data_type) {
             block.group_end_year = d.end;
-            block.group_leader = true;
+            // block.group_leader = true;
           }
         }
         // list.push(block);
@@ -624,25 +547,14 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       return null; // out range, not collected
     };
 
-    const oneTailBlock = (d, leftover = false) => {
-      const { block, anchor, epixel } = oneTailBlockLeader(d);
-
-      tailBlocks.push({
-        x: anchor,
-        y: tailY,
-        group: d.name,
-        start: anchor,
-        end: epixel,
-      });
-    };
-
     // main loop of raw data
     let lastLeftoverRawData = null;
     timelineData.forEach((d) => {
       if (d.start >= yearWindow[0] && d.start <= yearWindow[1]) {
         if (!tailOnly && d.start <= sYearMax) {
           if (d.events) spiralEventList = spiralEventList.concat(d.events);
-          oneSpiralBlock(d);
+          const blkData = getOneSpiralBlock(d);
+          if (blkData) spiralBlocks.push(blkData);
           lastLeftoverRawData = null; // erase last spiral outrange data, no need the whole plot
         } else {
           if (d.events) tailEventList = tailEventList.concat(d.events);
@@ -660,7 +572,16 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
             );
           }
 
-          oneTailBlock(d);
+          const blkData = getOneTailBlock(d);
+          if (blkData) {
+            const x = blkData.x + GROUP_LEAD_WIDTH;
+            const { end, group, y } = blkData;
+            const endData = { end, group, x, y };
+            blkData.end = x;
+
+            tailBlocks.push(blkData);
+            tailBlocks.push(endData);
+          }
         }
       } else if (d.start < yearWindow[1]) {
         lastLeftoverRawData = d;
@@ -688,7 +609,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     const tailScienceBlocks = [];
     science.forEach((d) => {
       d.data_type = "science";
-      const blkData = addOneTailBlock(d, false);
+      const blkData = getOneTailBlock(d, false);
       if (blkData) tailScienceBlocks.push(blkData);
     });
 
@@ -697,7 +618,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     let lastLinePer = null;
     spiralEventList.forEach((d) => {
       d.data_type = "event";
-      const blkData = addOneSpiralBlock(d, false);
+      const blkData = getOneSpiralBlock(d, false);
       // console.log(blkData, "[s Events]");
       if (blkData === null) {
         leftoverEventList.push(d);
@@ -722,7 +643,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     const MIN_EVENT_DIST = 8; // skip next event if it is closer than 4 pixels from previous collected one
     tailEventList.forEach((d) => {
       d.data_type = "event";
-      const blkData = addOneTailBlock(d, false);
+      const blkData = getOneTailBlock(d, false);
 
       if (blkData) {
         let keep = true;
@@ -738,7 +659,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     });
     tailMonarchList.forEach((d) => {
       d.data_type = "monarch";
-      const blkData = addOneTailBlock(d);
+      const blkData = getOneTailBlock(d);
       if (blkData) tailMonarchBlocks.push(blkData);
     });
 
@@ -752,9 +673,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       sYearMin: yearWindow[0],
       xShift: tailOnly ? -(winSize.x0 - TAIL_GAP) : 0, // tail abs x shift: ontop of global shift to leave 20 gap for tailOnly
       yShift: tailOnly ? 50 : 0, // abs y shift
-      spiralEventList,
-      tailEventList,
-      tailMonarchList,
       spiralEventBlocks,
       tailEventBlocks,
       tailMonarchBlocks,
@@ -879,7 +797,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       select("g")
         .selectAll(".spiral-block")
         .remove()
-        .data(data.spiralBlocks.filter((d) => d.group && !d.data_type))
+        .data(data.spiralBlocks)
         .enter()
         .append("rect")
         .attr("x", (d) => d.x)
@@ -917,7 +835,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       select("g")
         .selectAll(".spiral-block-label")
         .remove()
-        .data(data.spiralBlocks.filter((d) => d.group && !d.data_type))
+        .data(data.spiralBlocks)
         .enter()
         .append("text")
         .attr("dx", -6) // align label with group leader mark
@@ -949,6 +867,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         });
 
       //-- draw spiral event label
+      let up = false;
       select("g")
         .selectAll(".spiral-event-label")
         .remove()
@@ -960,16 +879,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .attr("class", "spiral-event-label")
         .attr("dx", -6)
         .attr("dy", (d) => {
-          let dy = -10; // move above by 10 pixel
-
-          if (lastEvent) {
-            const delta = Math.abs(d.linePer - lastEvent.linePer);
-            if (delta < 60) {
-              dy = 16;
-            }
-          }
-
-          lastEvent = d;
+          let dy = up ? 16 : -10; // move above by 10 pixel
+          up = !up;
           return dy;
         })
         .append("textPath")
@@ -993,24 +904,25 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     const tailTimeScale = tailYearToPixelScaler();
     const yearMaxPos = tailTimeScale(yearWindow[1]); // max pixel
 
-    // draw the rect on tail line
     const RECT_HEIGHT = 4;
+    const GAP_SIZE = 10;
+
+    // main tail data
     if (data.tailBlocks.length > 0) {
+      // for each raw range data point, draw the leading rect and the trailing bold line on tail line
       select("g")
         .selectAll(".tail-block")
         .remove()
-        .data(data.tailBlocks.filter((d) => d.group && !d.data_type))
+        .data(data.tailBlocks)
         .enter()
         .append("rect")
         .attr("gid", (d, i) => `${cleanNameString(d.group)}-${i + 1}`)
         .attr("id", (d, i) => `${cleanNameString(d.group)}-${i}`)
         .attr("fill", "navy")
-        .attr("class", (d) =>
-          d.group_leader ? "tail-block" : "tail-block-noleader"
-        )
+        .attr("class", "tail-block")
         .attr("x", (d) => d.x + data.xShift)
         .attr("y", (d) => {
-          let y = d.y + data.yShift + RECT_HEIGHT * 0.5; // + 4; // line under tail line
+          let y = d.y + data.yShift + RECT_HEIGHT * 0.5; // middle align with tail line
           if (avoidGroupOverlap) {
             if (lastX && lastGroup) {
               if (d.x < lastX && d.group !== lastGroup) {
@@ -1034,32 +946,12 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .style("fill", (d) => groupColor(d.group))
         .style("stroke", (d) => groupColor(d.group))
         .style("opacity", RECT_OPACITY);
-    }
 
-    // tail event circle
-    if (data.tailEventBlocks.length > 0) {
-      select("g")
-        .selectAll(".tail-event-circle")
-        .remove()
-        .data(data.tailEventBlocks)
-        .enter()
-        .append("circle")
-        .attr("class", "tail-event-circle")
-        .attr("cx", (d) => d.x + data.xShift)
-        .attr("cy", (d) => d.y + data.yShift) // + RECT_HEIGHT * 0.5) // move down to align with tail bar
-        .attr("r", CIRCLE_R)
-        .style("fill", (d) => groupColor(d.group))
-        .attr("stroke", "#000")
-        .style("opacity", 0.5);
-    }
-
-    //-- draw leader AND event label on tail line, skip is too close to previous leader
-    const GAP_SIZE = 10;
-    if (data.tailBlocks.length > 0) {
+      // leader label
       let lastLeader = null;
       select("g")
         .selectAll(".tail-leader-label")
-        .data(data.tailBlocks.filter((d) => d.group_start_year && !d.data_type))
+        .data(data.tailBlocks.filter((d) => d.group_leader))
         .enter()
         .append("text")
         .attr("class", "tail-leader-label")
@@ -1085,9 +977,25 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         );
     }
 
-    //-- tail events label on tail line, skip is too close to previous event
-    let lastEvent = null;
+    // event data on tail
     if (data.tailEventBlocks.length > 0) {
+      // event circle
+      select("g")
+        .selectAll(".tail-event-circle")
+        .remove()
+        .data(data.tailEventBlocks)
+        .enter()
+        .append("circle")
+        .attr("class", "tail-event-circle")
+        .attr("cx", (d) => d.x + data.xShift)
+        .attr("cy", (d) => d.y + data.yShift) // + RECT_HEIGHT * 0.5) // move down to align with tail bar
+        .attr("r", CIRCLE_R)
+        .style("fill", (d) => groupColor(d.group))
+        .attr("stroke", "#000")
+        .style("opacity", 0.5);
+
+      // event label
+      let lastEvent = null;
       select("g")
         .selectAll(".tail-event-label")
         .data(data.tailEventBlocks)
@@ -1116,11 +1024,11 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
 
     //-- tail monarch label and connect time
     if (data.tailMonarchBlocks.length > 0) {
-      const monData = data.tailMonarchBlocks;
-
       const VG = (data.lastY ? data.lastY : data.yShift) + 80; // Y- gap
       const HG = data.xShift; // X-shift
       data.lastY = VG; // will be used by next row data
+
+      const monData = data.tailMonarchBlocks;
 
       //-- monarch connect lines
       const connData = [];
@@ -1181,10 +1089,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         );
     }
 
-    const notTooCloseToMax = (yearVal) => {
-      return tailTimeScale(yearVal) < yearMaxPos - 6;
-    };
-
     //-- tail scinece vertical line and label
     if (data.tailScienceBlocks.length > 0) {
       const sData = data.tailScienceBlocks;
@@ -1220,7 +1124,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       //-- scinece  label
       // let preLastLeader = null;
       lastLeader = null;
-
       select("g")
         .selectAll(".tail-science-label")
         .data(sData)
@@ -1232,11 +1135,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .attr("font-weight", "bold")
         .text((d) => {
           return d.group;
-          // const delta = lastLeader ? Math.abs(d.x - lastLeader.x) : null;
-          // const label = !delta || delta > GAP_SIZE ? d.group : "";
-          // // console.log(d, d.start.toFixed(0), d.end.toFixed(0), "[monarch]");
-          // if (label) lastLeader = d;
-          // return label;
         })
         .attr(
           "transform",
@@ -1639,11 +1537,11 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const showControls = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
   const debugFn = () => {
-    // const svg = select("svg");
-    // console.info(svg, svg._groups[0][0].__zoom, "DEBUG");
     console.info(
-      plotData.spiralEventList,
-      plotData.tailEventList,
+      plotData.tailBlocks,
+      plotData.spiralBlocks,
+      // plotData.tailEventList,
+      // plotData.tailEventBlocks,
       // plotData.spiralEventBlocks,
       "debugFn"
     );
