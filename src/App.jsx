@@ -9,14 +9,17 @@ import Controller from "./components/Controller/Controller";
 import "./App.css";
 
 const App = () => {
+  const [hideAlert, setHideAlert] = React.useState(false);
   return (
     <>
       <div id="app-container" style={{ border: "solid 1px" }}>
         <Controller />
       </div>
-      {isMobile && (
+      {isMobile && !hideAlert && (
         <Stack sx={{ width: "100%" }} spacing={2} style={{ marginLeft: 4 }}>
-          <Alert severity="warning">友情提示：用电脑观看效果更佳。</Alert>
+          <Alert severity="warning" onClose={() => setHideAlert(true)}>
+            友情提示：用电脑观看效果更佳。
+          </Alert>
         </Stack>
       )}
     </>
