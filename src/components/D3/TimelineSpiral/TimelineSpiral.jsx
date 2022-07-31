@@ -1476,7 +1476,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       }
     }
 
-    const DEBUG = true;
+    const DEBUG = false;
     if (DEBUG) text += `; x=${d.x.toFixed(0)}`;
     setTipPositioin([
       x,
