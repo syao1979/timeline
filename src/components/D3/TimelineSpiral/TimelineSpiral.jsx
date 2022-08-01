@@ -268,14 +268,15 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     }
   }, [yearWindow, tailOnly]);
 
+  const ROTATE_PLOT = ROTATE && portrait;
   const updatePlotConfig = () => {
     if (!spiralConfig) return;
 
     select("g").selectAll("*").remove(); // clear all elements - for redraw
     select("g").attr(
       "transform",
-      `rotate(${ROTATE && portrait ? 90 : 0}) translate(${winSize.x0}, ${
-        ROTATE && portrait ? -winSize.y0 : winSize.y0
+      `rotate(${ROTATE_PLOT ? 90 : 0}) translate(${winSize.x0}, ${
+        ROTATE_PLOT ? -winSize.y0 : winSize.y0
       })`
     );
     select("svg")
@@ -1452,6 +1453,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   };
 
   const addInfo = (x, y, d) => {
+    // console.log(y, winSize.width, "[addInfo]");
     let text = d.data_type
       ? `${d.group} : ${normalizeYear(d.group_start_year)}. ${
           d.info ? d.info : ""
@@ -1535,9 +1537,9 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     select("svg g").attr(
       "transform",
       // `${e.transform} translate(${SPIRAL_R}, ${SPIRAL_R})`
-      `${e.transform} rotate(${
-        ROTATE && portrait ? 90 : 0
-      }) translate(${SPIRAL_R}, ${ROTATE && portrait ? -SPIRAL_R : SPIRAL_R})`
+      `${e.transform} rotate(${ROTATE_PLOT ? 90 : 0}) translate(${SPIRAL_R}, ${
+        ROTATE_PLOT ? -SPIRAL_R : SPIRAL_R
+      })`
     );
   };
 
@@ -1767,6 +1769,29 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       </Box>
     )
   ) : null;
+
+  const tipStyle = tipPosition
+    ? {
+        position: "absolute",
+        border: "solid 1px #000",
+        font: "10px arial",
+        padding: 10,
+        backgroundColor: "#eee",
+        color: tipPosition[3],
+        borderRadius: 4,
+        zIndex: 100,
+        top: tipPosition[0],
+        // left: tipPosition[1],
+        maxWidth: 200,
+      }
+    : null;
+  if (tipStyle) {
+    if (winSize.width - tipPosition[1] < 200) {
+      tipStyle.right = winSize.width - tipPosition[1] + TAIL_GAP;
+    } else {
+      tipStyle.left = tipPosition[1];
+    }
+  }
   return (
     <>
       <div id="timeline-plot" style={{ borderBottom: "solid 1px #eee" }}>
@@ -1779,25 +1804,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         {controls}
       </div>
 
-      {tipPosition ? (
-        <div
-          style={{
-            position: "absolute",
-            border: "solid 1px #000",
-            font: "10px arial",
-            padding: 10,
-            backgroundColor: "#eee",
-            color: tipPosition[3],
-            borderRadius: 4,
-            zIndex: 100,
-            top: tipPosition[0],
-            left: tipPosition[1],
-            maxWidth: 200,
-          }}
-        >
-          {tipPosition[2]}
-        </div>
-      ) : null}
+      {tipPosition ? <div style={tipStyle}>{tipPosition[2]}</div> : null}
     </>
   );
 };
