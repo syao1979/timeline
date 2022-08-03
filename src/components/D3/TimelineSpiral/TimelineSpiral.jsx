@@ -622,23 +622,26 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     }
 
     // collect scince data
+    const allTailData = true; //tailOnly;
     let lastSciBlkX = null;
     const tailScienceBlocks = [];
-    science.forEach((d) => {
-      d.data_type = "science";
-      const blkData = getOneTailBlock(d, false);
-      if (blkData) {
-        let keep = true;
-        if (lastSciBlkX) {
-          const delta = Math.abs(blkData.x - lastSciBlkX);
-          if (delta > 0 && delta < 4) keep = false;
+    if (allTailData) {
+      science.forEach((d) => {
+        d.data_type = "science";
+        const blkData = getOneTailBlock(d, false);
+        if (blkData) {
+          let keep = true;
+          if (lastSciBlkX) {
+            const delta = Math.abs(blkData.x - lastSciBlkX);
+            if (delta > 0 && delta < 4) keep = false;
+          }
+          if (keep) {
+            tailScienceBlocks.push(blkData);
+            lastSciBlkX = blkData.x;
+          }
         }
-        if (keep) {
-          tailScienceBlocks.push(blkData);
-          lastSciBlkX = blkData.x;
-        }
-      }
-    });
+      });
+    }
 
     const KEEP_MIN_GAP = true;
     const keepPlotData = (v1, v2, dist) => {
@@ -684,28 +687,32 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         }
       }
     });
-    tailMonarchList.forEach((d) => {
-      d.data_type = "monarch";
-      const blkData = getOneTailBlock(d);
-      if (blkData) tailMonarchBlocks.push(blkData);
-    });
+    if (allTailData) {
+      tailMonarchList.forEach((d) => {
+        d.data_type = "monarch";
+        const blkData = getOneTailBlock(d);
+        if (blkData) tailMonarchBlocks.push(blkData);
+      });
+    }
 
-    lastTailEventX = null;
-    let lastTailEventChX = null;
-    worldevents.forEach((d) => {
-      const blkData = getOneTailBlock(d, false);
-      if (blkData) {
-        const lastX = d.nation ? lastTailEventChX : lastTailEventX;
-        if (keepPlotData(blkData.x, lastX, MIN_EVENT_DIST)) {
-          worldEventBlocks.push(blkData);
-          if (d.nation) {
-            lastTailEventChX = blkData.x;
-          } else {
-            lastTailEventX = blkData.x;
+    if (allTailData) {
+      lastTailEventX = null;
+      let lastTailEventChX = null;
+      worldevents.forEach((d) => {
+        const blkData = getOneTailBlock(d, false);
+        if (blkData) {
+          const lastX = d.nation ? lastTailEventChX : lastTailEventX;
+          if (keepPlotData(blkData.x, lastX, MIN_EVENT_DIST)) {
+            worldEventBlocks.push(blkData);
+            if (d.nation) {
+              lastTailEventChX = blkData.x;
+            } else {
+              lastTailEventX = blkData.x;
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     return {
       spiralBlocks,
@@ -1393,7 +1400,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     if (!timeUnit) return;
 
     const x0 = -210;
-    const y0 = -285; // top-left corner
+    const y0 = tailOnly ? 160 : -260; // left-down/up corner; more (-) move y upwards
     const h = -4;
     const yunit = yearMarkUnit();
     const len = plotConfig.pixPerYear * yunit;
