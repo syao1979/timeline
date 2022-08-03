@@ -13,6 +13,7 @@ import { isMobile } from "react-device-detect";
 import timelineData from "../../../assets/data/timeline";
 import monarch from "../../../assets/data/monarch";
 import science from "../../../assets/data/science";
+import worldevents from "../../../assets/data/worldevents";
 
 import RangeCtl from "../../Controls/RangeCtl";
 import SelectCtl from "../../Controls/SelectCtl";
@@ -63,6 +64,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const [tipPosition, setTipPositioin] = useState(null);
   const [monarchY, setMonarchY] = useState(null);
   const [sciY, setSciY] = useState(null);
+  const [worldEventY, setWorldEventY] = useState(null);
 
   const [timeHeadArray, setTimeHeadArray] = useState({});
   const [timeHead, setTimeHead] = useState(DEFAULT_TIME_HEAD);
@@ -368,7 +370,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     drawTailLine();
     drawTailGroup();
     drawTimeMarks();
-    drawTips();
+    addTips();
     drawScale();
   };
 
@@ -480,9 +482,10 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     let spiralEventList = [];
     let tailEventList = [];
     let tailMonarchList = [];
-    let spiralEventBlocks = [];
-    let tailEventBlocks = [];
-    let tailMonarchBlocks = [];
+    const spiralEventBlocks = [];
+    const tailEventBlocks = [];
+    const tailMonarchBlocks = [];
+    const worldEventBlocks = [];
 
     const getOneTailBlock = (d, range = true) => {
       if (!(d.start >= sYearMax && d.start <= yearWindow[1])) return null;
@@ -507,6 +510,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         group_start_year: d.start,
         info: d.info,
       };
+      if (d.nation) block.nation = d.nation;
       if (d.label) block.label = d.label;
       if (d.data_type) block.data_type = d.data_type;
       if (range) {
@@ -580,8 +584,15 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           const blkData = getOneTailBlock(d);
           if (blkData) {
             const x = blkData.x + GROUP_LEAD_WIDTH;
-            const { end, group, y } = blkData;
-            const endData = { end, group, x, y };
+            const { group_start_year, group_end_year, end, group, y } = blkData;
+            const endData = {
+              group_start_year,
+              group_end_year,
+              end,
+              group,
+              x,
+              y,
+            };
             blkData.end = x;
 
             tailBlocks.push(blkData);
@@ -629,6 +640,15 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       }
     });
 
+    const KEEP_MIN_GAP = true;
+    const keepPlotData = (v1, v2, dist) => {
+      // v1 must be a valid value, v2 can be null; check distance between values >= dist
+      if (KEEP_MIN_GAP && v2) {
+        const delta = Math.abs(v1 - v2);
+        return delta >= dist;
+      }
+      return true;
+    };
     //--
     const leftoverEventList = [];
     let lastLinePer = null;
@@ -639,12 +659,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       if (blkData === null) {
         leftoverEventList.push(d);
       } else {
-        let keep = true;
-        if (lastLinePer) {
-          const delta = Math.abs(blkData.linePer - lastLinePer);
-          if (delta > 0 && delta < BLOCK_MIN_GAP) keep = false;
-        }
-        if (keep) {
+        if (keepPlotData(blkData.linePer, lastLinePer, BLOCK_MIN_GAP)) {
           spiralEventBlocks.push(blkData);
           lastLinePer = blkData.linePer;
         }
@@ -657,27 +672,13 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
 
     let lastTailEventX = null;
     const MIN_EVENT_DIST = 8; // skip next event if it is closer than 4 pixels from previous collected one
-    // const testList = ["元和国计簿", "日僧空海抵长安", "牛李党争"];
+
     tailEventList.forEach((d) => {
       d.data_type = "event";
       const blkData = getOneTailBlock(d, false);
 
       if (blkData) {
-        let keep = true;
-        if (lastTailEventX) {
-          const delta = Math.abs(blkData.x - lastTailEventX);
-          if (delta > 0 && delta < MIN_EVENT_DIST) keep = false;
-        }
-        // if (testList.includes(d.name)) {
-        //   console.log(
-        //     d.name,
-        //     lastTailEventX.toFixed(0),
-        //     blkData.x.toFixed(0),
-        //     keep,
-        //     "[events]"
-        //   );
-        // }
-        if (keep) {
+        if (keepPlotData(blkData.x, lastTailEventX, MIN_EVENT_DIST)) {
           tailEventBlocks.push(blkData);
           lastTailEventX = blkData.x;
         }
@@ -689,6 +690,23 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       if (blkData) tailMonarchBlocks.push(blkData);
     });
 
+    lastTailEventX = null;
+    let lastTailEventChX = null;
+    worldevents.forEach((d) => {
+      const blkData = getOneTailBlock(d, false);
+      if (blkData) {
+        const lastX = d.nation ? lastTailEventChX : lastTailEventX;
+        if (keepPlotData(blkData.x, lastX, MIN_EVENT_DIST)) {
+          worldEventBlocks.push(blkData);
+          if (d.nation) {
+            lastTailEventChX = blkData.x;
+          } else {
+            lastTailEventX = blkData.x;
+          }
+        }
+      }
+    });
+
     return {
       spiralBlocks,
       tailBlocks,
@@ -698,11 +716,12 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
       sYearMax,
       sYearMin: yearWindow[0],
       xShift: tailOnly ? -(winSize.x0 - TAIL_GAP) : 0, // tail abs x shift: ontop of global shift to leave 20 gap for tailOnly
-      yShift: tailOnly ? 50 : 0, // abs y shift
+      yShift: tailOnly ? 20 : 0, // abs y shift
       spiralEventBlocks,
       tailEventBlocks,
       tailMonarchBlocks,
       tailScienceBlocks,
+      worldEventBlocks,
     };
   };
 
@@ -855,43 +874,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .attr("stroke", "#000")
         .style("opacity", 0.5);
 
-      //-- draw spiral group leader label: omit label if it is too close to previous label
-      let lastBlock = null;
-      let lastEvent = null;
-      select("g")
-        .selectAll(".spiral-block-label")
-        .remove()
-        .data(data.spiralBlocks)
-        .enter()
-        .append("text")
-        .attr("dx", -6) // align label with group leader mark
-        .attr("dy", (d) => {
-          const dy = 22; // move below by 22 pixel, under the block bar
-          lastEvent = d;
-          return dy;
-        })
-        .style("text-anchor", "start")
-        .style("font", "10px arial")
-        .attr("class", "spiral-block-label")
-        .append("textPath")
-        .text((d) => {
-          let label = d.group; // + `(${normalizeYear(d.group_start_year)})`;
-
-          if (lastBlock) {
-            const delta = Math.abs(d.linePer - lastBlock.linePer);
-            if (delta > 0 && delta < BLOCK_MIN_GAP) {
-              label = "";
-            }
-          }
-          lastBlock = d;
-          return label;
-        })
-        // place text along spiral
-        .attr("xlink:href", "#spiral")
-        .attr("startOffset", (d) => {
-          return (d.linePer / spiralLen) * 100 + "%";
-        });
-
       //-- draw spiral event label
       let up = false;
       select("g")
@@ -1008,6 +990,9 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     //-- tail monarch label and connect time
     drawTailMonarch();
 
+    //-
+    drawWorldEvents();
+
     //-- tail scinece vertical line and label
     drawTailSci();
   };
@@ -1116,9 +1101,6 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .data(monData)
         .enter()
         .append("text")
-        // .attr("x", (d) => d.x + HG + 4)
-        // .attr("y", (d) => d.y + VG + 2)
-
         .attr("class", "monarch-label")
         .style("text-anchor", "end")
         .style("font", "10px arial")
@@ -1138,23 +1120,25 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     }
   };
 
+  const doShift = (xval, lastX) => {
+    const delta = lastX ? Math.abs(xval - lastX) : null;
+    return !delta || delta > GAP_SIZE;
+  };
   const drawTailSci = () => {
     const data = plotData;
     if (data.tailScienceBlocks.length > 0) {
       const sData = data.tailScienceBlocks;
       const yPos0 = data.yShift + 2; // vertical line Y- gap to main timeline
       // VG/HG : vertial and horizontal global shift
-      const VG = sciY ? sciY : (data.lastY ? data.lastY : data.yShift) + 80; // label shifted down 100px from last line
+      const VG = sciY ? sciY : (data.lastY ? data.lastY : data.yShift) + 90; // label shifted down 100px from last line
       const HG = data.xShift; // X-shift
       if (VG !== sciY) setSciY(VG);
       const labelY = VG;
 
+      data.lastY = VG;
+
       let lastLeader = null;
       const stagerShift = 40;
-      const doShift = (xval) => {
-        const delta = lastLeader ? Math.abs(xval - lastLeader.x) : null;
-        return !delta || delta > GAP_SIZE;
-      };
 
       //--  connect lines
       select("g")
@@ -1170,13 +1154,12 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .attr("y1", (d) => d.y + yPos0)
         .attr("x2", (d) => d.x + HG)
         .attr("y2", (d) => {
-          const shift = doShift(d.x);
+          const shift = doShift(d.x, lastLeader?.x);
           if (shift) lastLeader = d;
           return d.y + labelY - 2 + (!shift ? stagerShift : 0);
         });
 
       //-- scinece  label
-      // let preLastLeader = null;
       lastLeader = null;
       select("g")
         .selectAll(".tail-science-label")
@@ -1195,7 +1178,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           (d) => {
             const x0 = d.x + HG + 4; // so text aligns with time mark
             // const delta = lastLeader ? Math.abs(d.x - lastLeader.x) : null;
-            const shift = doShift(d.x);
+            const shift = doShift(d.x, lastLeader?.x);
             const y0 = shift ? d.y + labelY : d.y + labelY + stagerShift;
             if (shift) {
               // preLastLeader = lastLeader;
@@ -1205,6 +1188,72 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           }
           // rotate the text
         );
+    }
+  };
+
+  const drawWorldEvents = () => {
+    const data = plotData;
+    const eData = data.worldEventBlocks;
+
+    if (eData.length > 0) {
+      // const yPos0 = data.yShift + 2; // vertical line Y- gap to main timeline
+      // VG/HG : vertial and horizontal global shift
+      const VG = worldEventY
+        ? worldEventY
+        : (data.lastY ? data.lastY : data.yShift) + 80; // label shifted down 50px from last line
+      const HG = data.xShift; // X-shift
+      if (VG !== worldEventY) setWorldEventY(VG);
+      data.lastY = VG;
+
+      let lastEvent = null;
+      select("g")
+        .selectAll(".tail-worldevent-label")
+        .data(eData)
+        .enter()
+        .append("text")
+        .attr("class", "tail-worldevent-label")
+        .style("text-anchor", (d) => (d.nation ? "start" : "end"))
+        .style("font", "10px arial")
+        .attr("font-weight", "bold")
+        .text((d) => {
+          return d.group;
+        })
+        .style("fill", (d) => groupColor(d.group)) //(d) => (d.nation ? "black" : groupColor(d.group)))
+        .attr("transform", (d) => {
+          let y = d.y + VG + 2;
+          y = d.nation ? y - 8 : y;
+          return `translate(${d.x + HG + 4},${y}) rotate(-90)`;
+        });
+
+      //--  connect lines
+      const lineData = [];
+      lastEvent = eData[0];
+      const y0 = lastEvent.y + VG;
+      for (let i = 1; i < eData.length; i++) {
+        const d = eData[i];
+        const x1 = lastEvent.x + HG;
+        const x2 = d.x + HG;
+        const line = { group: lastEvent.group, x1, y1: y0, x2, y2: y0 };
+        lineData.push(
+          line,
+          { ...line, x2: x1, y2: y0 - 4 },
+          { ...line, x1: x2, y1: y0 - 4 }
+        );
+
+        lastEvent = d;
+      }
+      select("g")
+        .selectAll(".worldevent-line")
+        .data(lineData)
+        .enter()
+        .append("line")
+        .attr("class", "worldevent-line")
+        .style("stroke", (d) => groupColor(d.group))
+        .style("stroke-width", 1)
+        .attr("x1", (d) => d.x1)
+        .attr("y1", (d) => d.y1)
+        .attr("x2", (d) => d.x2)
+        .attr("y2", (d) => d.y2);
     }
   };
   const drawTimeMarks = () => {
@@ -1271,7 +1320,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     if (tailMarks.length > 0) {
       let flap = false;
       const labelHeight = 20;
-      const y0 = tailOnly ? -50 : data.yShift;
+      const y0 = tailOnly ? -90 : data.yShift;
       if (tailOnly) {
         drawTailLine(y0);
       }
@@ -1313,6 +1362,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
           }) //magic number here
           .attr("text-anchor", "middle")
           .style("font", "10px arial")
+          .style("font-style", "italic")
+          .style("fill", "#999")
           // .style("color", () => (d.year === 0 ? "red" : "black"))
           .attr("class", "tail-year-mark-label") //easy to style with CSS
           .text(normalizeYear(d.year));
@@ -1469,7 +1520,10 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         }]` +
         `${
           d.group_end_year !== undefined
-            ? ` [${d.group_end_year - d.group_start_year}]`
+            ? ` [共${normalizeYear(
+                d.group_end_year - d.group_start_year,
+                true
+              )}]`
             : ""
         }`;
 
@@ -1488,7 +1542,7 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
     ]);
   };
 
-  const drawTips = () => {
+  const addTips = () => {
     select("g")
       .selectAll(
         `.spiral-block,
@@ -1503,7 +1557,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
         .monarch-bar,
         .monarch-connect,
         .tail-science-label,
-        .tail-science-circle`
+        .tail-science-circle,
+        .tail-worldevent-label`
       )
       .on("mouseover", function (event, d) {
         select(this).style("cursor", "help"); // "context-menu");
@@ -1593,10 +1648,8 @@ const TimelineSpiral = ({ changePlot, changePlotLabel }) => {
   const showControls = spiralConfig && Object.keys(timeHeadArray).length > 0;
 
   const debugFn = () => {
-    drawTimeMarks();
     console.info(
-      plotData.tailBlocks,
-      plotData.spiralBlocks,
+      plotData,
       // plotData.tailEventList,
       // plotData.tailEventBlocks,
       // plotData.spiralEventBlocks,

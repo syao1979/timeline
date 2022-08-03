@@ -1,6 +1,6 @@
 const data = [
   {
-    name: "地心说",
+    name: "日心说",
     en: "The heliocentric model-Nicolaus Copernicus",
     start: 1543.8,
     info: "SEP 8, 1543. Nicolaus Copernicus invented the heliocentric model, the heliocentric model, centered around the sun. He claimed that all the planets, including Earth, moved in orbits around the sun, and showed how this new system could accurately calculate the positions of the planets.",
@@ -30,10 +30,34 @@ const data = [
     info: "SEP 8, 1675. Anton van Leeuwenhoek discovered micro-organisms in pond water.",
   },
   {
+    name: "发明电报",
+    start: 1837,
+    info: `发明者是美国人塞缪尔·莫尔斯`,
+  },
+
+  {
+    name: "《物种起源》",
+    en: "On the Origin of Species",
+    start: 1859,
+    info: `《物种起源》(On the Origin of Species by Means of Natural Selection, or the Preservation 
+      of Favoured Races in the Struggle for Life），是英国生物学家查尔斯·达尔文系统阐述生物进化理论基础的生物学著作，
+      1859年11月24日在伦敦出版`,
+  },
+  {
+    name: "发明电话",
+    start: 1860,
+    info: `1860电话被发明`,
+  },
+  {
     name: "元素周期表",
     en: "The Periodic Table",
     start: 1869.8,
     info: "SEP 8, 1869. Dmitri Mendeleev established the Periodic table.",
+  },
+  {
+    name: "无线电",
+    start: 1888,
+    info: `赫兹发现无线电`,
   },
   {
     name: "X-光",
@@ -42,10 +66,20 @@ const data = [
     info: "SEP 8, 1895. Wilhelm Conrad Röntgen invented the X-ray.",
   },
   {
+    name: "无线电收音机",
+    start: 1906,
+    info: `无线电收音机被发明`,
+  },
+  {
     name: "原子数",
     en: "The atomic number",
     start: 1913.8,
     info: "SEP 8, 1913. Henry Moseley: defined atomic number.",
+  },
+  {
+    name: "电视",
+    start: 1925,
+    info: `电视被发明`,
   },
   {
     name: "大爆炸理论",

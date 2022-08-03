@@ -143,7 +143,7 @@ const Controller = () => {
     </div>
   );
 
-  const GRAPH_TYPES = ["时间线", "平行线"];
+  const GRAPH_TYPES = ["时间轴", "平行线"];
   const [graph, setGraph] = useState(GRAPH_TYPES[0]);
 
   const ctlType = "mini";

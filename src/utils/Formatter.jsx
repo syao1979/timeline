@@ -24,6 +24,8 @@ const shortNumber = (val, factor, fix = 0) => {
  * @returns
  */
 const normalizeYear = (year, numOnly = false) => {
+  if (isNaN(year)) return "?";
+
   const WAN = 10000;
   const BAIWAN = 1000000;
   const QIANWAN = 10000000;

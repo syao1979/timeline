@@ -16,7 +16,7 @@ const TimelineRange = ({
     setCurrentValue(value);
   }, [value]);
 
-  const minDistance = parseInt((limits[1] - limits[0]) * 0.2); //minDist();
+  const minDistance = parseInt((limits[1] - limits[0]) * 0.1); //minDist();
   // console.log(minDistance, value, limits, "[minDistance]");
   const onChange = (_event, newValue, activeThumb) => {
     if (!Array.isArray(newValue)) {
