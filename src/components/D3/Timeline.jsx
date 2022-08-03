@@ -17,7 +17,8 @@ import AvertaCtl, {
   TYPE_RESET,
 } from "../Controls/AvertarCtl";
 import timeline from "../../assets/data/timeline";
-import { notNull } from "../../utils/Formatter";
+import { notNull, normalizeYear } from "../../utils/Formatter";
+import { Typography } from "@mui/material";
 
 const BODY_PADDING = 9; // document has this padding that affects the topmost div
 const THIS_YEAR = new Date().getFullYear();
@@ -222,7 +223,7 @@ const Timeline = (props) => {
 
   const debugFn = () => {
     console.info(
-      dataReady,
+      yearWindow,
       // plotData.tailEventList,
       // plotData.tailEventBlocks,
       // plotData.spiralEventBlocks,
@@ -346,6 +347,18 @@ const Timeline = (props) => {
           </Grid>
           <Grid item xs={2}>
             {yRangeCtl}
+            <Typography
+              style={{
+                position: "relative",
+                top: -10,
+                fontSize: 12,
+                fontStyle: "italic",
+                color: "#aaa",
+                textAlign: "center",
+              }}
+            >
+              时间区 - {normalizeYear(yearWindow[1] - yearWindow[0])}
+            </Typography>
           </Grid>
           <Grid item xs={1}>
             {yStartCtl}

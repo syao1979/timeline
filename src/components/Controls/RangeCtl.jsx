@@ -47,8 +47,8 @@ const TimelineRange = ({
       value={currentVal}
       onChange={onChange}
       onChangeCommitted={handleChange}
-      valueLabelDisplay="auto"
-      // valueLabelDisplay="on"
+      // valueLabelDisplay="auto"
+      valueLabelDisplay="on"
       size="small"
       valueLabelFormat={(value) => <div>{normalizeYear(value)}</div>}
       style={{ marginTop: 16, marginLeft: 20 }}

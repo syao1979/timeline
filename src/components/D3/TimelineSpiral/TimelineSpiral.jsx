@@ -1264,16 +1264,16 @@ const TimelineSpiral = ({
         y: y0 - 4,
         text: `${normalizeYear(yunit)}`,
       },
-      {
-        x: x0 + 4,
-        y: y0 + 12,
-        text: `${normalizeYear(ymin)} - ${normalizeYear(ymax)}`,
-      },
-      {
-        x: x0 + 4,
-        y: y0 + 24,
-        text: `[共 ${normalizeYear(ymax - ymin)}]`,
-      },
+      // {
+      //   x: x0 + 4,
+      //   y: y0 + 12,
+      //   text: `${normalizeYear(ymin)} - ${normalizeYear(ymax)}`,
+      // },
+      // {
+      //   x: x0 + 4,
+      //   y: y0 + 24,
+      //   text: `[共 ${normalizeYear(ymax - ymin)}]`,
+      // },
     ];
 
     select("g")
