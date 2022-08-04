@@ -26,8 +26,20 @@ const data = [
   {
     name: "微生物",
     en: "Microscopic Organisms",
-    start: 1675.8,
+    start: 1789,
     info: "SEP 8, 1675. Anton van Leeuwenhoek discovered micro-organisms in pond water.",
+  },
+  {
+    name: "拉瓦锡元素说",
+    en: "Microscopic Organisms",
+    start: 1675.8,
+    info: `安托万-洛朗·拉瓦锡(Antoine-Laurent de Lavoisier，1743年8月26日～1794年5月8日),法国著名化学家、生物学家，
+    被后世尊称为"现代化学之父"。拉瓦锡在化学上的杰出成就很大程度上源于他将化学从定性转向定量的转变。拉瓦锡因提出氧化学说而闻名。
+    他认识并命名了氧气(1778年)和氢气(1783年)并反对燃素说。拉瓦锡帮助构建了度量体系，编写了第一份广泛的元素清单，并帮助改革化学术语。
+    他预言了硅的存在（1787年）并第一个确立硅的存在，同时确立硫只包含一种元素（1777年），而不是一种化合物。
+    他提出规范的化学命名法，撰写了第一部真正现代化学教科书《化学基本论述》（Traité élémentaire de Chimie）。
+    他倡导并改进定量分析方法并用其验证了质量守恒定律，他称为“物质不灭定律”.
+    在法国大革命最激烈的时期，他被指控犯有税务欺诈罪，并销售掺假烟草，随后被送上断头台，终年51岁`,
   },
   {
     name: "发明电报",
@@ -64,6 +76,11 @@ const data = [
     en: "X-rays",
     start: 1895.8,
     info: "SEP 8, 1895. Wilhelm Conrad Röntgen invented the X-ray.",
+  },
+  {
+    name: "量子理论",
+    start: 1900,
+    info: `无线电收音机被发明`,
   },
   {
     name: "无线电收音机",

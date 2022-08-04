@@ -151,10 +151,8 @@ const Timeline = (props) => {
       search: param ? param : "",
     });
   };
-  const DELAYED_SLIDE_UPDATE = false;
-  const setSliderObj = (val, idx) => {
-    _setSliderObj({ val, idx });
-    if (!DELAYED_SLIDE_UPDATE) updateURL("yw", val);
+  const setSliderObj = (val) => {
+    setYearWindow(val);
   };
 
   const updateURL = (key = null, value = null) => {
@@ -196,8 +194,8 @@ const Timeline = (props) => {
     updateURL("yl", range);
     updateURL("yw", range);
   };
-  const handleYearRangeChange = (e, val) => {
-    if (DELAYED_SLIDE_UPDATE) updateURL("yw", [...sliderObj.val]);
+  const handleYearRangeChange = (_, val) => {
+    updateURL("yw", val);
   };
 
   const handleTimeHeadChange = (e) => {
