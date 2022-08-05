@@ -42,7 +42,7 @@ const Timeline = (props) => {
   const [tailOnly, setTailOnly] = useState(false);
   const [timeMark, setTimeMark] = useState(false);
   const [timeUnit, setTimeUnit] = useState(false);
-  const [sliderObj, _setSliderObj] = useState(null);
+  // const [sliderObj, _setSliderObj] = useState(null);
 
   const [searchParams, _setSearchParams] = useSearchParams();
 
@@ -54,6 +54,7 @@ const Timeline = (props) => {
     y0: 300,
   });
 
+  const minDistance = parseInt((yearLimits[1] - yearLimits[0]) * 0.1);
   const navigate = useNavigate();
   const urlToIntRange = (value) => {
     return value.split(",").map((d) => parseInt(d));
@@ -195,7 +196,8 @@ const Timeline = (props) => {
     updateURL("yw", range);
   };
   const handleYearRangeChange = (_, val) => {
-    updateURL("yw", val);
+    const newVal = val[1] - val[0] >= minDistance ? val : yearWindow;
+    updateURL("yw", newVal);
   };
 
   const handleTimeHeadChange = (e) => {
@@ -288,6 +290,7 @@ const Timeline = (props) => {
       setRange={setSliderObj}
       handleChange={handleYearRangeChange}
       width={150}
+      minDistance={minDistance}
     />
   ) : null;
 

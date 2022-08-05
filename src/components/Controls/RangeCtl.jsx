@@ -5,8 +5,9 @@ import Slider from "@mui/material/Slider";
 
 import { normalizeYear } from "../../utils/Formatter";
 
-const TimelineRange = ({
+export const TimelineRange = ({
   limits, // min and max of the range
+  minDistance,
   value, // current value
   setRange,
   handleChange,
@@ -16,7 +17,7 @@ const TimelineRange = ({
     setCurrentValue(value);
   }, [value]);
 
-  const minDistance = parseInt((limits[1] - limits[0]) * 0.1); //minDist();
+  // const minDistance = parseInt((limits[1] - limits[0]) * 0.1); //minDist();
   // console.log(minDistance, value, limits, "[minDistance]");
   const onChange = (_event, newValue, activeThumb) => {
     if (!Array.isArray(newValue)) {
