@@ -1428,10 +1428,11 @@ const TimelineSpiral = ({
         zIndex: 100,
         top: tipPosition[0],
         // left: tipPosition[1],
-        maxWidth: 200,
+        maxWidth: 500,
       }
     : null;
   if (tipStyle) {
+    tipStyle.maxWidth = winSize.width * 0.5;
     if (winSize.width - tipPosition[1] < 200) {
       tipStyle.right = winSize.width - tipPosition[1] + TAIL_GAP;
     } else {

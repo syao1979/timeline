@@ -468,7 +468,7 @@ const data = {
     { name: "季历", inherit: "亶父 ", relation: "子", father: "亶父 " },
 
     {
-      name: "文王",
+      name: "周文王",
       inherit: "季历",
       position: "帝",
       relation: "子",
@@ -478,7 +478,7 @@ const data = {
       info: "姬昌",
     },
     {
-      name: "武王",
+      name: "周武王",
       inherit: "文王",
       position: "帝",
       relation: "子",
@@ -488,7 +488,7 @@ const data = {
       info: `姬发,文王次子。前1050年继承王位。重用姜尚、周公姬旦、召公姬奭,周朝日益强盛。前1046年, 联合庸、蜀、羌、髳卢、彭、濮等部族进攻商纣行都朝歌。战于牧野，商兵阵前倒戈，商军大败，纣自焚于“鹿台”，商灭`,
     },
     {
-      name: "成王",
+      name: "周成王",
       inherit: "武王",
       position: "帝",
       relation: "子",
@@ -498,7 +498,7 @@ const data = {
       info: "姬诵, 即位时年少，周公姬旦摄政，引起管叔、蔡叔、霍叔等的不满，联合武庚发动叛乱，史称“三监之乱”。周公东征，三年后平乱，管叔自杀，蔡叔被囚，夺商、卫、邶、鄘四国封地。周公摄政七年后，还政于成王",
     },
     {
-      name: "康王",
+      name: "周康王",
       inherit: "成王",
       position: "帝",
       relation: "子",
@@ -508,7 +508,7 @@ const data = {
       info: "姬钊,成王子",
     },
     {
-      name: "昭王",
+      name: "周昭王",
       inherit: "康王",
       position: "帝",
       relation: "子",
@@ -518,7 +518,7 @@ const data = {
       info: "姬瑕. 康王子. 昭王十九年，南巡荆楚不返，死于汉水之中。死因史书隐讳不言.",
     },
     {
-      name: "穆王",
+      name: "周穆王",
       inherit: "昭王",
       position: "帝",
       relation: "子",
@@ -528,7 +528,7 @@ const data = {
       info: "又作周缪王，姬满，昭王子. 喜好游历，十三年至十七年驾八骏之乘驱驰九万里，西行至昆仑，观黄帝之宫。又设宴于瑶池，与西王母做歌相和。又说他宠幸美人盛姬，为盛姬筑台。穆王时，国力强盛。致力于向东南方发展，通过巡游，使许多方国部落归顺于周的统治，对周的巩固和发展具有积极意义。但同时导致了朝政的松弛",
     },
     {
-      name: "共王",
+      name: "周共王",
       inherit: "穆王",
       position: "帝",
       relation: "子",
@@ -538,7 +538,7 @@ const data = {
       info: "姬繄扈(yī hù). 又作龚王，恭王。周穆王之子",
     },
     {
-      name: "懿王",
+      name: "周懿王",
       inherit: "恭王",
       position: "帝",
       relation: "子",
@@ -548,19 +548,19 @@ const data = {
       info: "姬囏. 周开始衰落.《竹书纪年》记载：懿王元年，天再旦于郑",
     },
     {
-      name: "孝王",
+      name: "周孝王",
       start: -892,
       end: -886,
       info: "姬辟方，考王。周共王之弟。",
     },
     {
-      name: "夷王",
+      name: "周夷王",
       start: -886,
       end: -878,
       info: "姬燮.懿王子.《史记》称夷王, 青铜文称彳屖王.《竹书纪年》称夷王三年烹齐哀公于鼎",
     },
     {
-      name: "厉王",
+      name: "周厉王",
       inherit: "夷王",
       position: "帝",
       relation: "子",
@@ -579,7 +579,7 @@ const data = {
       info: "周公及召公代为执政(一说是共伯和执政),史称“共和行政”。周共和十四年(前828年)厉王死，周公及召公立厉王之子静，是为宣王",
     },
     {
-      name: "宣王",
+      name: "周宣王",
       inherit: "厉王",
       position: "帝",
       relation: "子",
@@ -589,7 +589,7 @@ const data = {
       info: "姬静或姬靖.周定公、召穆公辅政。在位时振兴了宗周，史称宣王中兴",
     },
     {
-      name: "幽王",
+      name: "周幽王",
       inherit: "宣王",
       position: "帝",
       relation: "子",
@@ -601,7 +601,7 @@ const data = {
   ],
   东周: [
     {
-      name: "平王",
+      name: "周平王",
       inherit: "幽王",
       position: "帝",
       relation: "子",
@@ -611,7 +611,7 @@ const data = {
       info: "姬宜臼，幽王子。子姬泄,姬狐,少子姬武。",
     },
     {
-      name: "洩王",
+      name: "周洩王",
       pinin: "xiè",
       inherit: "平王",
       position: "帝",
@@ -619,7 +619,7 @@ const data = {
       father: "平王",
     },
     {
-      name: "桓王",
+      name: "周桓王",
       inherit: "洩王",
       position: "帝",
       relation: "子",
@@ -630,7 +630,7 @@ const data = {
       info: "姬林, 平王孙,太子泄子,东周君主. 曾压制郑庄公的权力,两军在繻葛开战,郑将祝聃射中其肩膀,负伤而回。谥号桓王,长子姬佗继位,次子克",
     },
     {
-      name: "荘王",
+      name: "周荘王",
       inherit: "桓王",
       position: "帝",
       relation: "子",
@@ -641,7 +641,7 @@ const data = {
       info: "姬佗, 平王长子. 前693年平定王子克之乱。子僖王胡齐,王子颓",
     },
     {
-      name: "釐王",
+      name: "周釐王",
       pinin: "lí",
       inherit: "荘王",
       position: "帝",
@@ -653,7 +653,7 @@ const data = {
       info: "姬胡齐,庄王长子,东周君主。前681年尊齐桓公为霸主,前678年晋武公被立为晋国国君",
     },
     {
-      name: "惠王",
+      name: "周惠王",
       inherit: "釐王",
       position: "帝",
       relation: "子",
@@ -665,7 +665,7 @@ const data = {
             郑厉公在栎地收容,前673年与虢国攻入周朝,平定王子颓之乱,郑厉公获赐虎牢,子周襄王郑,王子带.`,
     },
     {
-      name: "襄王",
+      name: "周襄王",
       inherit: "惠王",
       position: "帝",
       relation: "子",
@@ -679,7 +679,7 @@ const data = {
         前635年晋国帮助周襄王,派兵将其诛杀,叛乱迅速平定`,
     },
     {
-      name: "顷王",
+      name: "周顷王",
       pinin: "qǐng",
       inherit: "襄王",
       position: "帝",
@@ -691,14 +691,14 @@ const data = {
       info: `姬壬臣,襄王子。王室财政紧张,无法安葬襄王,派毛伯卫向鲁国讨钱。鲁文公派使者送钱到都城,才安葬周襄王。其子姬班继位`,
     },
     {
-      name: "匡王",
+      name: "周匡王",
       birth: -633,
       start: -613,
       end: -607,
       info: `姬班,顷王长子。在位六年,10月病死,其弟姬瑜继位。`,
     },
     {
-      name: "定王",
+      name: "周定王",
       inherit: "顷王",
       position: "帝",
       relation: "子",
@@ -709,7 +709,7 @@ const data = {
       info: `姬瑜,顷王次子,匡王弟。即位时,诸侯对天子不礼遇,中央权力继续削弱。前594年楚围宋时,造成易子而食的惨剧,使社会生产遭到破坏`,
     },
     {
-      name: "简王",
+      name: "周简王",
       inherit: "定王",
       position: "帝",
       relation: "子",
@@ -720,7 +720,7 @@ const data = {
       info: "姬夷,定王子。前575年在鄢陵展开大战,晋国制服齐国,与楚国势均力敌",
     },
     {
-      name: "灵王",
+      name: "周灵王",
       inherit: "简王",
       position: "帝",
       relation: "子",
@@ -733,7 +733,7 @@ const data = {
       会盟约定各国停止战争,奉晋楚国为共同霸主,史称弭兵会盟`,
     },
     {
-      name: "景王",
+      name: "周景王",
       inherit: "灵王",
       position: "帝",
       relation: "子",
@@ -746,7 +746,7 @@ const data = {
       晋国攻王子朝而拥立周敬王,次年尹氏立其为王。前516年兵败,携周室典籍奔楚,前503年被周敬王刺杀。`,
     },
     {
-      name: "悼王",
+      name: "周悼王",
       inherit: "景王",
       position: "帝",
       relation: "子",
@@ -758,7 +758,7 @@ const data = {
       晋顷公遣荀跞带兵将其救出,护送避于王城,同年10月病死`,
     },
     {
-      name: "敬王",
+      name: "周敬王",
       inherit: "景王",
       position: "帝",
       relation: "子",
@@ -771,7 +771,7 @@ const data = {
         前477年12月病死`,
     },
     {
-      name: "元王",
+      name: "周元王",
       inherit: "敬王",
       position: "帝",
       relation: "子",
@@ -782,7 +782,7 @@ const data = {
       info: `姬仁,敬王子。在位时,越王勾践灭掉吴国,承认越国霸主地位,前469年病死`,
     },
     {
-      name: "贞定王",
+      name: "周贞定王",
       inherit: "元王",
       position: "帝",
       relation: "子",
@@ -794,7 +794,7 @@ const data = {
     },
 
     {
-      name: "哀王",
+      name: "周哀王",
       inherit: "真定王",
       position: "帝",
       relation: "子",
@@ -805,7 +805,7 @@ const data = {
       info: `姬去疾,贞定王长子。即位3个月被姬叔杀害`,
     },
     {
-      name: "思王",
+      name: "周思王",
       inherit: "真定王",
       position: "帝",
       relation: "子",
@@ -816,7 +816,7 @@ const data = {
       info: `姬叔,哀王弟,贞定王子。前441年杀害周哀王即位,在位五个月,同年8月被弟王子嵬所杀,`,
     },
     {
-      name: "考王",
+      name: "周考王",
       inherit: "真定王",
       position: "帝",
       relation: "子",
@@ -827,7 +827,7 @@ const data = {
       info: `姬嵬,贞定王子,哀王弟。前441年杀害周思王自立,子姬午即位`,
     },
     {
-      name: "威烈王",
+      name: "周威烈王",
       inherit: "考王",
       position: "帝",
       relation: "子",
@@ -838,7 +838,7 @@ const data = {
       info: `姬午,考王子,前402年病死,葬于洛阳,享年49岁,子姬骄即位`,
     },
     {
-      name: "安王",
+      name: "周安王",
       inherit: "威烈王",
       position: "帝",
       relation: "子",
@@ -849,7 +849,7 @@ const data = {
       info: `姬骄,威烈王子。前386年承认田和为齐侯,前376年病死,其子姬喜继位`,
     },
     {
-      name: "烈王",
+      name: "周烈王",
       inherit: "安王",
       position: "帝",
       relation: "子",
@@ -861,14 +861,14 @@ const data = {
       前369年病死`,
     },
     {
-      name: "显王",
+      name: "周显王",
       birth: -398,
       start: -369,
       end: -321,
       info: `姬扁,烈王弟。前367年分封公子根于巩,建东周国,周王寄居于东周国。前321年崩逝`,
     },
     {
-      name: "慎靓王",
+      name: "周慎靓王",
       inherit: "安王",
       position: "帝",
       relation: "子",
@@ -879,7 +879,7 @@ const data = {
       info: `姬定,顺,显王子。前318年公孙衍发起五国合纵攻秦的战役,同年联军进抵函谷关,秦出兵迎击,联军撤走.前315年病死`,
     },
     {
-      name: "赧王",
+      name: "周赧王",
       inherit: "慎靓王",
       position: "帝",
       relation: "子",
