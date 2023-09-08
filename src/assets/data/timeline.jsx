@@ -3163,7 +3163,7 @@ const data = [
   },
   {
     name: "今年",
-    start: 2022, // will be replaced runtime
+    start: new Date().getFullYear(), // will be replaced runtime
   },
 ];
 
